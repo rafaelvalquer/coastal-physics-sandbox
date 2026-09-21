@@ -338,6 +338,9 @@ export class GameEngine {
     const building = this.game?.buildings?.get?.(id);
     if (building) {
       this.camera.focusOn(building.x, building.y - building.height / 2, zoom);
+      this.game?.state?.selectInspection?.(
+        this.inspectWorld(building.x, building.y - building.height / 2)
+      );
       return true;
     }
     const construction = this.game?.constructions?.list?.().find((item) => item.id === id);
