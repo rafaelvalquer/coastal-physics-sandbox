@@ -41,6 +41,7 @@ import { ConstructionRenderer } from "../rendering/ConstructionRenderer.js";
 import { DamageOverlayRenderer } from "../rendering/DamageOverlayRenderer.js";
 import { WeatherRenderer } from "../rendering/WeatherRenderer.js";
 import { GameplayOverlayRenderer, OVERLAYS } from "../rendering/GameplayOverlayRenderer.js";
+import { ConstructionPreviewRenderer } from "../rendering/ConstructionPreviewRenderer.js";
 
 export class Game {
   constructor(engine, scenarioId = "porto-esperanca", difficulty = "NORMAL") {
@@ -145,6 +146,7 @@ export class Game {
     this.damageOverlayRenderer = new DamageOverlayRenderer();
     this.weatherRenderer = new WeatherRenderer();
     this.overlayRenderer = new GameplayOverlayRenderer();
+    this.constructionPreviewRenderer = new ConstructionPreviewRenderer();
 
     this.lastSnapshot = null;
     this.seedInfrastructure();
@@ -419,6 +421,9 @@ export class Game {
         completed: this.tutorial.completed
       },
       selectedConstruction: this.state.selectedConstruction,
+      constructionPreview: this.state.selectedConstruction && this.engine.pointer?.inside
+        ? this.constructionTool.inspect({ x: this.engine.pointer.x, y: this.engine.pointer.y })
+        : null,
       overlay: this.state.overlay,
       messages: this.state.messages,
       power: powerState,
@@ -443,6 +448,7 @@ export class Game {
     this.buildingRenderer.draw(ctx, this.buildings.list());
     this.damageOverlayRenderer.draw(ctx, this.buildings.list());
     this.overlayRenderer.draw(ctx, this.state.overlay, this);
+    this.constructionPreviewRenderer.draw(ctx, this);
   }
 
   serialize() {
