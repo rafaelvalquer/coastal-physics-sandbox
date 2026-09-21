@@ -28,4 +28,9 @@ export class TechnologyTree {
   serialize() {
     return { points: this.points, unlocked: [...this.unlocked] };
   }
+
+  hydrate(value = {}) {
+    this.points = Number(value.points || 0);
+    this.unlocked = new Set(value.unlocked || ["RIPRAP", "CONCRETE_WALL", "DRAINAGE"]);
+  }
 }
