@@ -289,6 +289,18 @@ export class GameEngine {
     if (key in this.debug) this.debug[key] = Boolean(value);
   }
 
+  focusOnWorld(x, y, zoom = this.camera.zoom) {
+    this.camera.focusOn(x, y, zoom);
+  }
+
+  zoomCamera(factor) {
+    return this.camera.zoomBy(factor);
+  }
+
+  fitWorld() {
+    this.camera.fitWorld();
+  }
+
   focusGameplay() {
     const buildings = this.game?.buildings?.list?.() || [];
     if (!buildings.length) {
@@ -396,6 +408,35 @@ export class GameEngine {
     return this.inspectWorld(this.pointer.x, this.pointer.y);
   }
 
+  getMiniMapData() {
+    const step = Math.max(1, Math.floor(this.terrain.cols / 48));
+    const coastline = [];
+    for (let x = 0; x < this.terrain.cols; x += step) {
+      coastline.push({
+        x: (x + 0.5) * this.terrain.cellSize,
+        y: this.terrain.columnTopCell(x) * this.terrain.cellSize
+      });
+    }
+    return {
+      worldWidth: WORLD.width,
+      worldHeight: WORLD.height,
+      coastline,
+      buildings: (this.game?.buildings?.list?.() || []).map((building) => ({
+        id: building.id,
+        type: building.type,
+        x: building.x,
+        y: building.y,
+        critical: ["HOSPITAL", "CITY_HALL", "POWER_PLANT", "PORT"].includes(building.type)
+      })),
+      constructions: (this.game?.constructions?.list?.() || []).map((item) => ({
+        id: item.id,
+        type: item.type,
+        x: item.x,
+        y: item.y
+      }))
+    };
+  }
+
   getStats() {
     let sediment = 0;
     for (let i = 0; i < this.water.n; i++) sediment += this.water.sediment[i];
@@ -411,6 +452,7 @@ export class GameEngine {
       particles: this.particles.items.length,
       inspection: this.getInspection(),
       camera: this.camera.snapshot(),
+      minimap: this.getMiniMapData(),
       gameplay: this.game?.snapshot?.() || null
     };
   }
