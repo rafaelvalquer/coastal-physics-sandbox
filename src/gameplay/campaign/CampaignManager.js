@@ -23,4 +23,9 @@ export class CampaignManager {
       completed: [...this.completed]
     };
   }
+
+  hydrate(value = {}) {
+    this.unlocked = new Set(value.unlocked || ["porto-esperanca"]);
+    this.completed = new Set(value.completed || []);
+  }
 }
