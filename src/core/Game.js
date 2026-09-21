@@ -401,6 +401,12 @@ export class Game {
       this.buildings.list().map((building) => [building.id, {
         id: building.id,
         type: building.type,
+        x: building.x,
+        y: building.y,
+        width: building.width,
+        height: building.height,
+        occupants: building.occupants,
+        capacity: building.capacity,
         integrity: building.integrity,
         integrityRatio: building.integrityRatio,
         operational: building.operational,
