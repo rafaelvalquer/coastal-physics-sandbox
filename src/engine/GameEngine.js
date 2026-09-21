@@ -1,0 +1,278 @@
+import { WORLD, TOOLS } from './world/constants.js';
+import { MATERIALS } from './world/materials.js';
+import { TerrainGrid } from './world/TerrainGrid.js';
+import { AtmosphereSystem } from './physics/AtmosphereSystem.js';
+import { WaterSolver } from './physics/WaterSolver.js';
+import { SurfaceWaveSolver } from './physics/SurfaceWaveSolver.js';
+import { ErosionSystem } from './physics/ErosionSystem.js';
+import { MoistureSystem } from './physics/MoistureSystem.js';
+import { GranularSystem } from './physics/GranularSystem.js';
+import { StructuralSystem } from './physics/StructuralSystem.js';
+import { RigidBodySystem } from './physics/RigidBodySystem.js';
+import { ParticleSystem } from './particles/ParticleSystem.js';
+import { Renderer } from './rendering/Renderer.js';
+import { clamp } from './utils/math.js';
+
+export class GameEngine {
+  constructor(canvas, onStats) {
+    this.canvas = canvas;
+    this.onStats = onStats;
+    this.terrain = new TerrainGrid();
+    this.particles = new ParticleSystem();
+    this.atmosphere = new AtmosphereSystem();
+    this.rigidBodies = new RigidBodySystem();
+    this.water = new WaterSolver(this.terrain, this.atmosphere, this.particles);
+    this.surfaceWaves = new SurfaceWaveSolver(this.water, this.atmosphere);
+    this.erosion = new ErosionSystem(this.terrain, this.water, this.surfaceWaves, this.particles);
+    this.moisture = new MoistureSystem(this.terrain, this.water, this.atmosphere);
+    this.granular = new GranularSystem(this.terrain, this.particles);
+    this.structural = new StructuralSystem(this.terrain, this.rigidBodies);
+    this.renderer = new Renderer(canvas, this);
+
+    this.running = true;
+    this.simulationSpeed = 1;
+    this.simTime = 0;
+    this.accumulator = 0;
+    this.lastTime = performance.now();
+    this.fps = 60;
+    this.statsTimer = 0;
+    this.tool = TOOLS.IMPULSE;
+    this.brushSize = 2;
+    this.pointer = { x: 0, y: 0, inside: false, down: false };
+    this.debug = { grid: false, velocity: false, pressure: false, sediment: false, moisture: false };
+    this.destroyed = false;
+    this.frameHandle = 0;
+
+    this.spawnInitialDebris();
+    this.bindInput();
+    this.frameHandle = requestAnimationFrame((t) => this.frame(t));
+  }
+
+  bindInput() {
+    this.handlers = {
+      pointerdown: (e) => {
+        this.canvas.setPointerCapture?.(e.pointerId);
+        const p = this.renderer.clientToWorld(e.clientX, e.clientY);
+        Object.assign(this.pointer, p, { inside: true, down: true });
+        this.applyTool(p.x, p.y, true);
+      },
+      pointermove: (e) => {
+        const p = this.renderer.clientToWorld(e.clientX, e.clientY);
+        Object.assign(this.pointer, p, { inside: true });
+        if (this.pointer.down && this.tool !== TOOLS.IMPULSE && this.tool !== TOOLS.DEBRIS && this.tool !== TOOLS.INSPECT) {
+          this.applyTool(p.x, p.y, false);
+        }
+      },
+      pointerup: () => { this.pointer.down = false; },
+      pointerleave: () => { this.pointer.inside = false; this.pointer.down = false; },
+      contextmenu: (e) => e.preventDefault()
+    };
+    for (const [name, handler] of Object.entries(this.handlers)) this.canvas.addEventListener(name, handler);
+  }
+
+  destroy() {
+    this.destroyed = true;
+    cancelAnimationFrame(this.frameHandle);
+    for (const [name, handler] of Object.entries(this.handlers || {})) this.canvas.removeEventListener(name, handler);
+    this.renderer.destroy();
+  }
+
+  frame(now) {
+    if (this.destroyed) return;
+    const realDt = clamp((now - this.lastTime) / 1000, 0, 0.05);
+    this.lastTime = now;
+    this.fps += ((realDt > 0 ? 1 / realDt : 60) - this.fps) * 0.08;
+
+    if (this.running) {
+      this.accumulator += realDt * this.simulationSpeed;
+      let steps = 0;
+      while (this.accumulator >= WORLD.fixedDt && steps < 14) {
+        this.step(WORLD.fixedDt);
+        this.accumulator -= WORLD.fixedDt;
+        steps++;
+      }
+      if (steps >= 14) this.accumulator = 0;
+    }
+
+    this.renderer.draw();
+    this.statsTimer += realDt;
+    if (this.statsTimer >= 0.18) {
+      this.statsTimer = 0;
+      this.onStats?.(this.getStats());
+    }
+    this.frameHandle = requestAnimationFrame((t) => this.frame(t));
+  }
+
+  step(dt) {
+    this.simTime += dt;
+    this.atmosphere.update(dt);
+    this.water.update(dt);
+    this.surfaceWaves.update(dt);
+    this.erosion.update(dt);
+    this.moisture.update(dt);
+    this.granular.update(dt);
+    this.structural.update(dt);
+    this.rigidBodies.update(dt, this.water, this.terrain);
+    this.particles.update(dt, this.water, this.terrain);
+  }
+
+  spawnInitialDebris() {
+    this.rigidBodies.spawn(535, 405, 24, 10, 620, 'wood');
+    this.rigidBodies.spawn(610, 392, 18, 9, 720, 'wood');
+  }
+
+  applyTool(x, y, initialClick) {
+    if (this.tool === TOOLS.INSPECT) return;
+    if (this.tool === TOOLS.IMPULSE) {
+      if (!initialClick) return;
+      this.water.addImpulse(x, -1.35);
+      this.surfaceWaves.addImpulse(x, 1.9);
+      this.particles.spawnSplash(x, this.water.surfaceYAtX(x), 1.6);
+      return;
+    }
+    if (this.tool === TOOLS.DEBRIS) {
+      if (!initialClick) return;
+      this.rigidBodies.spawn(x, y, 16 + Math.random() * 15, 8 + Math.random() * 9, 580 + Math.random() * 230, 'wood');
+      return;
+    }
+
+    const center = this.terrain.worldToCell(x, y);
+    const r = this.brushSize;
+    const materialByTool = {
+      [TOOLS.SAND]: MATERIALS.SAND,
+      [TOOLS.SOIL]: MATERIALS.SOIL,
+      [TOOLS.ROCK]: MATERIALS.ROCK,
+      [TOOLS.CONCRETE]: MATERIALS.CONCRETE
+    };
+
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (dx * dx + dy * dy > r * r) continue;
+        const cx = center.x + dx;
+        const cy = center.y + dy;
+        if (!this.terrain.inBounds(cx, cy)) continue;
+        const idx = this.terrain.index(cx, cy);
+
+        if (this.tool === TOOLS.DIG) {
+          const old = this.terrain.getMaterial(cx, cy);
+          if (old.solid) {
+            this.terrain.setCell(cx, cy, MATERIALS.AIR.id, 0, 0);
+            const wi = clamp(Math.floor(((cx + 0.5) * this.terrain.cellSize) / this.water.dx), 0, this.water.n - 1);
+            if (old.key === 'SAND' || old.key === 'SOIL' || old.key === 'CLAY') this.water.sediment[wi] += 0.12;
+          }
+        } else {
+          const mat = materialByTool[this.tool];
+          if (mat && this.terrain.material[idx] === MATERIALS.AIR.id) {
+            this.terrain.setCell(cx, cy, mat.id, 1, mat.key === 'SAND' ? 0.25 : 0.08);
+          }
+        }
+      }
+    }
+  }
+
+  setTool(tool) { this.tool = tool; }
+  setBrushSize(size) { this.brushSize = clamp(Number(size), 1, 7); }
+  setRunning(value) { this.running = Boolean(value); }
+  setSimulationSpeed(value) { this.simulationSpeed = clamp(Number(value), 0.25, 4); }
+
+  setEnvironment(partial) {
+    if ('wind' in partial) this.atmosphere.wind = clamp(Number(partial.wind), -30, 30);
+    if ('gustiness' in partial) this.atmosphere.gustiness = clamp(Number(partial.gustiness), 0, 1);
+    if ('rain' in partial) this.atmosphere.rain = clamp(Number(partial.rain), 0, 120);
+    if ('tide' in partial) this.atmosphere.tide = clamp(Number(partial.tide), -1.5, 2.2);
+  }
+
+  setDebug(key, value) {
+    if (key in this.debug) this.debug[key] = Boolean(value);
+  }
+
+  triggerStormWave() {
+    for (let x = 40; x < 360; x += 35) {
+      this.water.addImpulse(x, 1.2 + (x / 360) * 0.9);
+      this.surfaceWaves.addImpulse(x, -1.1);
+    }
+  }
+
+  resetWorld() {
+    this.terrain.generateIsland();
+    this.water.refreshBed();
+    this.water.resetWater();
+    this.water.time = 0;
+    this.surfaceWaves.displacement.fill(0);
+    this.surfaceWaves.velocity.fill(0);
+    this.surfaceWaves.time = 0;
+    this.erosion.deposition.fill(0);
+    this.erosion.totalSedimentReleased = 0;
+    this.erosion.totalSedimentDeposited = 0;
+    this.rigidBodies.bodies = [];
+    this.particles.items = [];
+    this.simTime = 0;
+    this.spawnInitialDebris();
+  }
+
+  getInspection() {
+    if (!this.pointer.inside) return null;
+    const { x, y } = this.pointer;
+    const c = this.terrain.worldToCell(x, y);
+    const idx = this.terrain.index(c.x, c.y);
+    const wi = clamp(Math.floor(x / this.water.dx), 0, this.water.n - 1);
+    const mat = this.terrain.getMaterial(c.x, c.y);
+    return {
+      x: Math.round(x),
+      y: Math.round(y),
+      material: mat.name,
+      integrity: this.terrain.integrity[idx] || 0,
+      moisture: this.terrain.moisture[idx] || 0,
+      depth: this.water.h[wi] / 48,
+      velocity: this.water.velocityAtIndex(wi) / 48,
+      pressure: this.water.pressure[wi],
+      sediment: this.water.sediment[wi],
+      breaking: this.water.breaking[wi]
+    };
+  }
+
+  getStats() {
+    let sediment = 0;
+    for (let i = 0; i < this.water.n; i++) sediment += this.water.sediment[i];
+    return {
+      fps: this.fps,
+      simTime: this.simTime,
+      waterVolume: this.water.totalVolume,
+      kineticEnergy: this.water.kineticEnergy,
+      waveEnergy: this.water.waveEnergy,
+      sediment,
+      erodedCells: this.terrain.erodedCells,
+      bodies: this.rigidBodies.bodies.length,
+      particles: this.particles.items.length,
+      inspection: this.getInspection()
+    };
+  }
+
+  serialize() {
+    return {
+      version: 1,
+      simTime: this.simTime,
+      simulationSpeed: this.simulationSpeed,
+      terrain: this.terrain.serialize(),
+      atmosphere: this.atmosphere.serialize(),
+      water: this.water.serialize(),
+      surfaceWaves: this.surfaceWaves.serialize(),
+      erosion: this.erosion.serialize(),
+      rigidBodies: this.rigidBodies.serialize(),
+      particles: this.particles.serialize()
+    };
+  }
+
+  hydrate(state) {
+    if (!state) return;
+    this.terrain.hydrate(state.terrain);
+    this.atmosphere.hydrate(state.atmosphere);
+    this.water.hydrate(state.water);
+    this.surfaceWaves.hydrate(state.surfaceWaves);
+    this.erosion.hydrate(state.erosion);
+    this.rigidBodies.hydrate(state.rigidBodies);
+    this.particles.hydrate(state.particles);
+    this.simTime = Number(state.simTime || 0);
+    this.simulationSpeed = clamp(Number(state.simulationSpeed || 1), 0.25, 4);
+  }
+}
