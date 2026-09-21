@@ -215,7 +215,10 @@ export class GameEngine {
     }
   }
 
-  resetWorld() {
+  resetWorld(
+    scenarioId = this.game?.scenario?.id || "porto-esperanca",
+    difficulty = this.game?.difficulty?.level || "NORMAL"
+  ) {
     this.terrain.generateIsland();
     this.water.refreshBed();
     this.water.resetWater();
@@ -228,9 +231,15 @@ export class GameEngine {
     this.erosion.totalSedimentDeposited = 0;
     this.rigidBodies.bodies = [];
     this.particles.items = [];
+    this.atmosphere.hydrate({ time: 0, wind: 8, gustiness: 0.28, rain: 0, tide: 0 });
     this.simTime = 0;
-    this.game = new Game(this);
+    this.game = new Game(this, scenarioId, difficulty);
     this.spawnInitialDebris();
+  }
+
+  loadScenario(scenarioId, difficulty = "NORMAL") {
+    this.resetWorld(scenarioId, difficulty);
+    return this.game.snapshot();
   }
 
   getInspection() {
@@ -299,6 +308,11 @@ export class GameEngine {
     this.erosion.hydrate(state.erosion);
     this.rigidBodies.hydrate(state.rigidBodies);
     this.particles.hydrate(state.particles);
+    const scenarioId = state.gameplay?.scenarioId || this.game?.scenario?.id || "porto-esperanca";
+    const difficulty = state.gameplay?.difficulty?.level || this.game?.difficulty?.level || "NORMAL";
+    if (this.game?.scenario?.id !== scenarioId || this.game?.difficulty?.level !== difficulty) {
+      this.game = new Game(this, scenarioId, difficulty);
+    }
     this.game?.hydrate?.(state.gameplay || {});
     this.simTime = Number(state.simTime || 0);
     this.simulationSpeed = clamp(Number(state.simulationSpeed || 1), 0.25, 8);
