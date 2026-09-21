@@ -1,0 +1,1 @@
+export class TransactionLedger { constructor(){this.entries=[];} add(entry){const e={date:new Date().toISOString(),...entry};this.entries.push(e);return e;} list(){return [...this.entries];} serialize(){return this.entries;} hydrate(v=[]){this.entries=[...v];} }
