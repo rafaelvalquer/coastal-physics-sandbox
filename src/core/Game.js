@@ -207,10 +207,11 @@ export class Game {
       this.clearConstruction();
       return { ok: true };
     });
-    this.commandBus.register("evacuation:issue", ({ type }) => ({
-      ok: true,
-      evacuated: this.evacuation.issue(type)
-    }));
+    this.commandBus.register("evacuation:issue", ({ type }) => {
+      const requested = this.evacuation.issue(type);
+      if (this.tutorial.current === "PREPARE_STORM") this.tutorial.complete();
+      return { ok: true, requested };
+    });
     this.commandBus.register("building:repair", ({ id, amount = 25, cost = 1500 }) => {
       const building = this.buildings.get(id);
       if (!building) return { ok: false, reason: "Prédio não encontrado" };
@@ -303,6 +304,9 @@ export class Game {
       this.damage.update(dt);
       this.physicsAdapter.update(dt);
       this.constructions.update(dt);
+
+      this.roads.updateFlooding(this.engine.water);
+      this.evacuation.update(dt);
 
       const powerPlant = this.buildings.get("power-plant");
       const hospital = this.buildings.get("hospital");
