@@ -13,6 +13,8 @@ import { ParticleSystem } from './particles/ParticleSystem.js';
 import { Renderer } from './rendering/Renderer.js';
 import { clamp } from './utils/math.js';
 import { Game } from '../core/Game.js';
+import { WorldCamera } from '../gameplay/camera/WorldCamera.js';
+import { CameraController } from '../gameplay/camera/CameraController.js';
 
 export class GameEngine {
   constructor(canvas, onStats) {
@@ -28,6 +30,14 @@ export class GameEngine {
     this.moisture = new MoistureSystem(this.terrain, this.water, this.atmosphere);
     this.granular = new GranularSystem(this.terrain, this.particles);
     this.structural = new StructuralSystem(this.terrain, this.rigidBodies);
+    this.camera = new WorldCamera({
+      worldWidth: WORLD.width,
+      worldHeight: WORLD.height,
+      minZoom: 0.55,
+      maxZoom: 2.5,
+      zoom: 0.9
+    });
+    this.cameraController = new CameraController(this.camera);
     this.renderer = new Renderer(canvas, this);
 
     this.running = true;
@@ -40,6 +50,8 @@ export class GameEngine {
     this.tool = TOOLS.IMPULSE;
     this.brushSize = 2;
     this.pointer = { x: 0, y: 0, inside: false, down: false };
+    this.keysDown = new Set();
+    this.pointerMode = "tool";
     this.debug = { grid: false, velocity: false, pressure: false, sediment: false, moisture: false };
     this.game = new Game(this);
     this.destroyed = false;
@@ -53,41 +65,109 @@ export class GameEngine {
 
   bindInput() {
     this.handlers = {
-      pointerdown: (e) => {
-        this.canvas.setPointerCapture?.(e.pointerId);
-        const p = this.renderer.clientToWorld(e.clientX, e.clientY);
-        Object.assign(this.pointer, p, { inside: true, down: true });
-        this.applyTool(p.x, p.y, true);
+      pointerdown: (event) => {
+        this.canvas.setPointerCapture?.(event.pointerId);
+        const wantsPan = event.button === 1 || this.keysDown.has("Space");
+        if (wantsPan) {
+          event.preventDefault();
+          this.pointerMode = "pan";
+          this.cameraController.startDrag(event.clientX, event.clientY);
+          return;
+        }
+
+        const point = this.renderer.clientToWorld(event.clientX, event.clientY);
+        Object.assign(this.pointer, point, { inside: true, down: true });
+        this.pointerMode = "tool";
+        this.applyTool(point.x, point.y, true);
       },
-      pointermove: (e) => {
-        const p = this.renderer.clientToWorld(e.clientX, e.clientY);
-        Object.assign(this.pointer, p, { inside: true });
-        if (this.pointer.down && this.tool !== TOOLS.IMPULSE && this.tool !== TOOLS.DEBRIS && this.tool !== TOOLS.INSPECT) {
-          this.applyTool(p.x, p.y, false);
+      pointermove: (event) => {
+        if (this.pointerMode === "pan" && this.cameraController.dragging) {
+          this.cameraController.dragTo(event.clientX, event.clientY, this.renderer.pixelRatio);
+          return;
+        }
+
+        const point = this.renderer.clientToWorld(event.clientX, event.clientY);
+        Object.assign(this.pointer, point, { inside: true });
+        if (
+          this.pointer.down &&
+          this.tool !== TOOLS.IMPULSE &&
+          this.tool !== TOOLS.DEBRIS &&
+          this.tool !== TOOLS.INSPECT
+        ) {
+          this.applyTool(point.x, point.y, false);
         }
       },
-      pointerup: () => { this.pointer.down = false; },
-      pointerleave: () => { this.pointer.inside = false; this.pointer.down = false; },
-      contextmenu: (e) => e.preventDefault()
+      pointerup: () => {
+        this.pointer.down = false;
+        this.pointerMode = "tool";
+        this.cameraController.endDrag();
+      },
+      pointercancel: () => {
+        this.pointer.down = false;
+        this.pointerMode = "tool";
+        this.cameraController.endDrag();
+      },
+      pointerleave: () => {
+        this.pointer.inside = false;
+        this.pointer.down = false;
+        if (this.pointerMode !== "pan") this.cameraController.endDrag();
+      },
+      wheel: (event) => {
+        event.preventDefault();
+        const point = this.renderer.clientToCanvas(event.clientX, event.clientY);
+        const factor = Math.exp(-event.deltaY * 0.00125);
+        this.camera.zoomBy(factor, point.x, point.y);
+      },
+      contextmenu: (event) => event.preventDefault()
     };
-    for (const [name, handler] of Object.entries(this.handlers)) this.canvas.addEventListener(name, handler);
+
+    for (const [name, handler] of Object.entries(this.handlers)) {
+      this.canvas.addEventListener(name, handler, name === "wheel" ? { passive: false } : undefined);
+    }
   }
 
   bindHotkeys() {
     this.keyHandler = (event) => {
+      if (event.target?.matches?.("input, select, textarea")) return;
+      this.keysDown.add(event.code);
+
       const match = /^F([1-9]|10)$/.exec(event.key);
-      if (!match) return;
-      event.preventDefault();
-      this.game?.setOverlayByIndex(Number(match[1]) - 1);
+      if (match) {
+        event.preventDefault();
+        this.game?.setOverlayByIndex(Number(match[1]) - 1);
+        return;
+      }
+
+      if (event.code === "Home") {
+        event.preventDefault();
+        this.focusGameplay();
+      } else if (event.code === "Equal" || event.code === "NumpadAdd") {
+        event.preventDefault();
+        this.camera.zoomBy(1.12);
+      } else if (event.code === "Minus" || event.code === "NumpadSubtract") {
+        event.preventDefault();
+        this.camera.zoomBy(1 / 1.12);
+      } else if (event.code === "Escape") {
+        this.game?.clearConstruction?.();
+      }
     };
-    window.addEventListener('keydown', this.keyHandler);
+
+    this.keyUpHandler = (event) => {
+      this.keysDown.delete(event.code);
+    };
+
+    window.addEventListener("keydown", this.keyHandler);
+    window.addEventListener("keyup", this.keyUpHandler);
   }
 
   destroy() {
     this.destroyed = true;
     cancelAnimationFrame(this.frameHandle);
     if (this.keyHandler) window.removeEventListener('keydown', this.keyHandler);
-    for (const [name, handler] of Object.entries(this.handlers || {})) this.canvas.removeEventListener(name, handler);
+    if (this.keyUpHandler) window.removeEventListener('keyup', this.keyUpHandler);
+    for (const [name, handler] of Object.entries(this.handlers || {})) {
+      this.canvas.removeEventListener(name, handler);
+    }
     this.renderer.destroy();
   }
 
@@ -96,6 +176,7 @@ export class GameEngine {
     const realDt = clamp((now - this.lastTime) / 1000, 0, 0.05);
     this.lastTime = now;
     this.fps += ((realDt > 0 ? 1 / realDt : 60) - this.fps) * 0.08;
+    this.cameraController.update(realDt, this.keysDown);
 
     if (this.running) {
       this.accumulator += realDt * this.simulationSpeed;
@@ -208,6 +289,53 @@ export class GameEngine {
     if (key in this.debug) this.debug[key] = Boolean(value);
   }
 
+  focusGameplay() {
+    const buildings = this.game?.buildings?.list?.() || [];
+    if (!buildings.length) {
+      this.camera.fitWorld();
+      return;
+    }
+    const xs = buildings.map((building) => building.x);
+    const ys = buildings.map((building) => building.y - building.height / 2);
+    this.camera.focusBounds({
+      minX: Math.min(...xs, 280),
+      maxX: Math.max(...xs),
+      minY: Math.min(...ys, 250),
+      maxY: Math.max(...ys, 560)
+    }, 90);
+  }
+
+  focusCity() {
+    const buildings = this.game?.buildings?.list?.() || [];
+    if (!buildings.length) return this.focusGameplay();
+    const xs = buildings.map((building) => building.x);
+    const ys = buildings.map((building) => building.y - building.height / 2);
+    this.camera.focusBounds({
+      minX: Math.min(...xs),
+      maxX: Math.max(...xs),
+      minY: Math.min(...ys),
+      maxY: Math.max(...ys)
+    }, 70);
+  }
+
+  focusCoast() {
+    this.camera.focusBounds({ minX: 120, maxX: 900, minY: 300, maxY: 650 }, 70);
+  }
+
+  focusOnEntity(id, zoom = 1.65) {
+    const building = this.game?.buildings?.get?.(id);
+    if (building) {
+      this.camera.focusOn(building.x, building.y - building.height / 2, zoom);
+      return true;
+    }
+    const construction = this.game?.constructions?.list?.().find((item) => item.id === id);
+    if (construction) {
+      this.camera.focusOn(construction.x, construction.y, zoom);
+      return true;
+    }
+    return false;
+  }
+
   triggerStormWave() {
     for (let x = 40; x < 360; x += 35) {
       this.water.addImpulse(x, 1.2 + (x / 360) * 0.9);
@@ -234,6 +362,7 @@ export class GameEngine {
     this.atmosphere.hydrate({ time: 0, wind: 8, gustiness: 0.28, rain: 0, tide: 0 });
     this.simTime = 0;
     this.game = new Game(this, scenarioId, difficulty);
+    this.focusGameplay();
     this.spawnInitialDebris();
   }
 
@@ -242,9 +371,7 @@ export class GameEngine {
     return this.game.snapshot();
   }
 
-  getInspection() {
-    if (!this.pointer.inside) return null;
-    const { x, y } = this.pointer;
+  inspectWorld(x, y) {
     const c = this.terrain.worldToCell(x, y);
     const idx = this.terrain.index(c.x, c.y);
     const wi = clamp(Math.floor(x / this.water.dx), 0, this.water.n - 1);
@@ -264,6 +391,11 @@ export class GameEngine {
     };
   }
 
+  getInspection() {
+    if (!this.pointer.inside) return null;
+    return this.inspectWorld(this.pointer.x, this.pointer.y);
+  }
+
   getStats() {
     let sediment = 0;
     for (let i = 0; i < this.water.n; i++) sediment += this.water.sediment[i];
@@ -278,6 +410,7 @@ export class GameEngine {
       bodies: this.rigidBodies.bodies.length,
       particles: this.particles.items.length,
       inspection: this.getInspection(),
+      camera: this.camera.snapshot(),
       gameplay: this.game?.snapshot?.() || null
     };
   }
@@ -295,6 +428,7 @@ export class GameEngine {
       erosion: this.erosion.serialize(),
       rigidBodies: this.rigidBodies.serialize(),
       particles: this.particles.serialize(),
+      camera: this.camera.serialize(),
       gameplay: this.game?.serialize?.() || null
     };
   }
@@ -308,6 +442,7 @@ export class GameEngine {
     this.erosion.hydrate(state.erosion);
     this.rigidBodies.hydrate(state.rigidBodies);
     this.particles.hydrate(state.particles);
+    this.camera.hydrate(state.camera || {});
     const scenarioId = state.gameplay?.scenarioId || this.game?.scenario?.id || "porto-esperanca";
     const difficulty = state.gameplay?.difficulty?.level || this.game?.difficulty?.level || "NORMAL";
     if (this.game?.scenario?.id !== scenarioId || this.game?.difficulty?.level !== difficulty) {
