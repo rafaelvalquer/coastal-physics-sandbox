@@ -38,6 +38,7 @@ import { BuildingRenderer } from "../rendering/BuildingRenderer.js";
 import { ConstructionRenderer } from "../rendering/ConstructionRenderer.js";
 import { DamageOverlayRenderer } from "../rendering/DamageOverlayRenderer.js";
 import { WeatherRenderer } from "../rendering/WeatherRenderer.js";
+import { GameplayOverlayRenderer, OVERLAYS } from "../rendering/GameplayOverlayRenderer.js";
 
 export class Game {
   constructor(engine, scenarioId = "porto-esperanca") {
@@ -135,6 +136,7 @@ export class Game {
     this.constructionRenderer = new ConstructionRenderer();
     this.damageOverlayRenderer = new DamageOverlayRenderer();
     this.weatherRenderer = new WeatherRenderer();
+    this.overlayRenderer = new GameplayOverlayRenderer();
 
     this.lastSnapshot = null;
     this.seedInfrastructure();
@@ -245,6 +247,32 @@ export class Game {
   clearConstruction() {
     this.constructionTool.clear();
     this.state.selectedConstruction = null;
+  }
+
+  setOverlayByIndex(index) {
+    const overlay = OVERLAYS[index] || null;
+    this.state.overlay = this.state.overlay === overlay ? null : overlay;
+    return this.state.overlay;
+  }
+
+  inspectAt(x, y) {
+    const building = this.buildings.near(x, y, 70).find((candidate) =>
+      x >= candidate.x - candidate.width / 2 &&
+      x <= candidate.x + candidate.width / 2 &&
+      y >= candidate.y - candidate.height &&
+      y <= candidate.y
+    );
+    if (!building) return null;
+    return {
+      id: building.id,
+      type: building.type,
+      integrity: building.integrity,
+      integrityRatio: building.integrityRatio,
+      operational: building.operational,
+      occupants: building.occupants,
+      capacity: building.capacity,
+      foundation: { ...building.foundation }
+    };
   }
 
   handleWorldClick(x, y) {
@@ -374,6 +402,7 @@ export class Game {
         completed: this.tutorial.completed
       },
       selectedConstruction: this.state.selectedConstruction,
+      overlay: this.state.overlay,
       messages: this.state.messages,
       power: powerState,
       waterUtility: waterState
@@ -389,6 +418,7 @@ export class Game {
     this.constructionRenderer.draw(ctx, this.constructions.list());
     this.buildingRenderer.draw(ctx, this.buildings.list());
     this.damageOverlayRenderer.draw(ctx, this.buildings.list());
+    this.overlayRenderer.draw(ctx, this.state.overlay, this);
   }
 
   serialize() {
