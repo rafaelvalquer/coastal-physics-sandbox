@@ -11,7 +11,9 @@
     "build": "vite build",
     "start": "node server/index.js",
     "preview": "vite preview",
-    "test:physics": "node scripts/physics-smoke.mjs"
+    "test:physics": "node scripts/physics-smoke.mjs",
+    "test": "node --test tests/gameplay/*.test.js",
+    "test:gameplay": "node --test tests/gameplay/*.test.js"
   },
   "dependencies": {
     "express": "^4.21.2",
