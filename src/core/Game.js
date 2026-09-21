@@ -78,7 +78,7 @@ export class Game {
       eventBus: this.eventBus
     });
 
-    this.physicsAdapter = new PhysicsConstructionAdapter(engine);
+    this.physicsAdapter = new PhysicsConstructionAdapter(engine, this.eventBus);
     this.validator = new PlacementValidator({
       terrain: engine.terrain,
       water: engine.water,
@@ -203,6 +203,12 @@ export class Game {
       this.state.pushMessage("Tempestade encerrada. Inspecione os danos.", "info");
       if (this.tutorial.current === "REVIEW_DAMAGE") this.tutorial.complete();
     });
+    this.eventBus.on("drainage:overflow", () => {
+      this.state.pushMessage("Drenagem operando acima da capacidade.", "warning");
+    });
+    this.eventBus.on("construction:failed", ({ constructionId }) => {
+      this.state.pushMessage("Falha estrutural em " + constructionId, "danger");
+    });
     this.eventBus.on("objective:completed", ({ id }) => {
       this.technology.grant(1);
       this.state.pushMessage("Objetivo concluído: " + id + " · +1 pesquisa", "success");
@@ -316,7 +322,7 @@ export class Game {
 
       this.foundation.update(this.buildings.list(), dt);
       this.damage.update(dt);
-      this.physicsAdapter.update(dt);
+      this.physicsAdapter.update(dt, this.constructions.list());
       this.constructions.update(dt);
 
       this.roads.updateFlooding(this.engine.water);
