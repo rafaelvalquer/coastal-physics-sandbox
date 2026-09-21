@@ -246,6 +246,29 @@ export class Game {
       if (this.tutorial.current === "PREPARE_STORM") this.tutorial.complete();
       return { ok: true, requested };
     });
+    this.commandBus.register("evacuation:building", ({ buildingId, type = "MANDATORY" }) => {
+      const requested = this.evacuation.issueBuilding(buildingId, type);
+      this.state.pushMessage(
+        requested > 0
+          ? "Evacuação iniciada em " + buildingId + ": " + requested + " pessoas."
+          : "Nenhum morador aguardando evacuação em " + buildingId + ".",
+        requested > 0 ? "warning" : "info",
+        { entityId: buildingId }
+      );
+      return { ok: true, requested };
+    });
+    this.commandBus.register("utility:prioritize-power", ({ buildingId }) => {
+      const building = this.buildings.get(buildingId);
+      if (!building) return { ok: false, reason: "Prédio não encontrado" };
+      const nodeId = building.type === "HOSPITAL"
+        ? "hospital"
+        : building.type === "POWER_PLANT"
+          ? "plant"
+          : "city";
+      const ok = this.power.setPriority(nodeId, 10);
+      if (ok) this.state.pushMessage("Energia priorizada para " + buildingId + ".", "success", { entityId: buildingId });
+      return { ok, nodeId };
+    });
     this.commandBus.register("building:repair", ({ id, amount = 25, cost = 1500 }) => {
       const building = this.buildings.get(id);
       if (!building) return { ok: false, reason: "Prédio não encontrado" };
