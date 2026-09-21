@@ -729,3 +729,21 @@ input[type="range"] { width: 100%; accent-color: #25a5c2; }
   .zoom-controls button:nth-of-type(6) { display: none; }
   .navigation-hint { display: none; }
 }
+
+.inspector-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  margin-top: 9px;
+}
+.inspector-actions button {
+  width: 100%;
+  padding: 7px;
+  font-size: 8px;
+}
+.inspector-empty {
+  margin: 0;
+  color: #7f99a4;
+  font-size: 9px;
+  line-height: 1.5;
+}
