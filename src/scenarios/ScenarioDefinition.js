@@ -1,0 +1,1 @@
+export class ScenarioDefinition { constructor(config){ Object.assign(this,config); if(!this.id)throw new Error("Scenario id required"); } }

@@ -1,0 +1,1 @@
+export const CLIMATE_PROFILE={baseWind:6,baseRain:2,baseTide:0,stormChancePerDay:.015,maxStormsPerYear:8,forecastError:{1:.05,3:.14,7:.28}};

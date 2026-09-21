@@ -1,0 +1,1 @@
+export const ECONOMY_CONFIG={initialBalance:100000,baseTaxPerResident:38,portRevenue:2500,governmentTransfer:1200,monthlyMaintenanceBaseline:3500};
