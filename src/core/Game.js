@@ -32,6 +32,8 @@ import { EvacuationManager } from "../gameplay/evacuation/EvacuationManager.js";
 import { PowerNetwork } from "../gameplay/utilities/PowerNetwork.js";
 import { WaterUtilitySystem } from "../gameplay/utilities/WaterUtilitySystem.js";
 import { CampaignManager } from "../gameplay/campaign/CampaignManager.js";
+import { DifficultyManager } from "../gameplay/campaign/DifficultyManager.js";
+import { AchievementManager } from "../gameplay/campaign/AchievementManager.js";
 import { TechnologyTree } from "../gameplay/technology/TechnologyTree.js";
 
 import { BuildingRenderer } from "../rendering/BuildingRenderer.js";
@@ -41,7 +43,7 @@ import { WeatherRenderer } from "../rendering/WeatherRenderer.js";
 import { GameplayOverlayRenderer, OVERLAYS } from "../rendering/GameplayOverlayRenderer.js";
 
 export class Game {
-  constructor(engine, scenarioId = "porto-esperanca") {
+  constructor(engine, scenarioId = "porto-esperanca", difficulty = "NORMAL") {
     this.engine = engine;
     this.scenario = ScenarioLoader.load(scenarioId);
     this.eventBus = new EventBus();
@@ -50,6 +52,7 @@ export class Game {
     this.state = new GameState();
     this.loop = new GameLoop({ gameplayDt: 0.1 });
     this.random = new SeededRandom(this.scenario.seed);
+    this.difficulty = new DifficultyManager(difficulty);
 
     this.buildings = new BuildingManager(this.eventBus);
     for (const config of this.scenario.buildings) {
@@ -70,7 +73,7 @@ export class Game {
     }
 
     this.economy = new EconomyManager({
-      initialBalance: this.scenario.initialBalance,
+      initialBalance: this.scenario.initialBalance * this.difficulty.profile.initialBudgetMultiplier,
       eventBus: this.eventBus
     });
 
@@ -103,10 +106,13 @@ export class Game {
       water: engine.water,
       atmosphere: engine.atmosphere,
       buildingManager: this.buildings,
-      eventBus: this.eventBus
+      eventBus: this.eventBus,
+      damageMultiplier: this.difficulty.profile.damageMultiplier
     });
 
-    this.climate = new ClimateProfile();
+    this.climate = new ClimateProfile({
+      stormChancePerDay: 0.015 * this.difficulty.profile.stormChanceMultiplier
+    });
     this.weather = new WeatherDirector({
       random: this.random,
       eventBus: this.eventBus,
@@ -131,6 +137,8 @@ export class Game {
     });
     this.campaign = new CampaignManager();
     this.technology = new TechnologyTree();
+    this.economy.maintenance.multiplier = this.difficulty.profile.maintenanceMultiplier;
+    this.achievements = new AchievementManager(this.eventBus);
 
     this.buildingRenderer = new BuildingRenderer();
     this.constructionRenderer = new ConstructionRenderer();
@@ -194,7 +202,11 @@ export class Game {
       if (this.tutorial.current === "REVIEW_DAMAGE") this.tutorial.complete();
     });
     this.eventBus.on("objective:completed", ({ id }) => {
-      this.state.pushMessage("Objetivo concluído: " + id, "success");
+      this.technology.grant(1);
+      this.state.pushMessage("Objetivo concluído: " + id + " · +1 pesquisa", "success");
+    });
+    this.eventBus.on("achievement:unlocked", ({ id }) => {
+      this.state.pushMessage("Conquista desbloqueada: " + id, "success");
     });
   }
 
@@ -352,7 +364,8 @@ export class Game {
         this.state.status = "WON";
         this.campaign.complete(this.scenario.id);
         this.technology.grant(3);
-        this.state.pushMessage("Vitória em Porto Esperança.", "success");
+        this.eventBus.emit("scenario:won", { scenarioId: this.scenario.id });
+        this.state.pushMessage("Vitória em " + this.scenario.name + ".", "success");
       }
 
       this.lastSnapshot = snapshot;
@@ -409,7 +422,14 @@ export class Game {
       overlay: this.state.overlay,
       messages: this.state.messages,
       power: powerState,
-      waterUtility: waterState
+      waterUtility: waterState,
+      researchPoints: this.technology.points,
+      technology: [...this.technology.unlocked],
+      achievements: [...this.achievements.unlocked],
+      difficulty: this.difficulty.level,
+      campaign: this.campaign.serialize(),
+      achievements: this.achievements.serialize(),
+      difficulty: this.difficulty.serialize()
     };
   }
 
@@ -456,6 +476,10 @@ export class Game {
     this.tutorial.hydrate(value.tutorial || {});
     this.power.hydrate(value.power || {});
     this.waterUtility.hydrate(value.waterUtility || {});
+    this.technology.hydrate(value.technology || {});
+    this.campaign.hydrate(value.campaign || {});
+    this.achievements.hydrate(value.achievements || {});
+    if (value.difficulty?.level) this.difficulty.set(value.difficulty.level);
     this.constructions.hydrate(value.constructions || []);
     this.lastSnapshot = this.createSnapshot();
   }
