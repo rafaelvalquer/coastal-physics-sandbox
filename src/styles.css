@@ -192,3 +192,21 @@ input[type="range"] { width: 100%; accent-color: #1ea1bd; }
   .game-build-grid { grid-template-columns: repeat(3, 1fr); }
   .game-hud-metric:nth-of-type(2), .game-hud-metric:nth-of-type(3) { display: none; }
 }
+
+.game-overlay-position { position: absolute; left: 14px; bottom: 105px; pointer-events: none; }
+.game-overlay-bar {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; width: 310px;
+  padding: 5px; border: 1px solid rgba(70,108,126,.35); border-radius: 8px;
+  background: rgba(5,14,20,.78); backdrop-filter: blur(6px);
+}
+.game-overlay-bar button { display: grid; gap: 1px; padding: 4px 5px; text-align: left; min-width: 0; }
+.game-overlay-bar b { font-size: 7px; color: #86d2df; }
+.game-overlay-bar span { font-size: 6px; color: #718d99; overflow: hidden; text-overflow: ellipsis; }
+.game-inspected-building {
+  display: flex; justify-content: space-between; gap: 8px; margin-bottom: 7px;
+  padding-bottom: 6px; border-bottom: 1px solid rgba(72,111,131,.3);
+}
+.game-inspected-building strong { font-size: 9px; color: #dfecef; }
+.game-inspected-building span { font-size: 8px; color: #78919c; }
+.terrain-probe { margin-top: 8px; padding-top: 7px; border-top: 1px solid rgba(72,111,131,.3); }
+.game-repair-button { width: 100%; margin-top: 7px; font-size: 8px; border-color: #5d7047; color: #cfe5ab; }
