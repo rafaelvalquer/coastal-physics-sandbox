@@ -3,6 +3,7 @@ import { WeatherPanel } from "../WeatherPanel/WeatherPanel.jsx";
 import { EconomyPanel } from "../EconomyPanel/EconomyPanel.jsx";
 import { ObjectivePanel } from "../ObjectivePanel/ObjectivePanel.jsx";
 import { InspectorPanel } from "../Inspector/InspectorPanel.jsx";
+import { OverlayBar } from "../OverlayBar/OverlayBar.jsx";
 
 const SPEEDS = [0, 1, 2, 4, 8];
 
@@ -62,7 +63,7 @@ export function GameHUD({ engine, stats }) {
         <WeatherPanel snapshot={snapshot} />
         <EconomyPanel snapshot={snapshot} />
         <ObjectivePanel snapshot={snapshot} />
-        <InspectorPanel inspection={stats?.inspection} />
+        <InspectorPanel inspection={stats?.inspection} engine={engine} />
         <div className="game-card">
           <div className="game-panel-title">EMERGÊNCIA</div>
           <div className="game-action-row">
@@ -75,6 +76,10 @@ export function GameHUD({ engine, stats }) {
           </div>
         </div>
       </aside>
+
+      <div className="game-overlay-position">
+        <OverlayBar engine={engine} snapshot={snapshot} />
+      </div>
 
       <div className="game-hud-bottom">
         <BuildMenu engine={engine} snapshot={snapshot} />
