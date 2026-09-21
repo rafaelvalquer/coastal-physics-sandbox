@@ -4,6 +4,8 @@ import { EconomyPanel } from "../EconomyPanel/EconomyPanel.jsx";
 import { ObjectivePanel } from "../ObjectivePanel/ObjectivePanel.jsx";
 import { InspectorPanel } from "../Inspector/InspectorPanel.jsx";
 import { OverlayBar } from "../OverlayBar/OverlayBar.jsx";
+import { CampaignPanel } from "../CampaignPanel/CampaignPanel.jsx";
+import { GameDebugPanel } from "../DebugPanel/GameDebugPanel.jsx";
 
 const SPEEDS = [0, 1, 2, 4, 8];
 
@@ -63,7 +65,9 @@ export function GameHUD({ engine, stats }) {
         <WeatherPanel snapshot={snapshot} />
         <EconomyPanel snapshot={snapshot} />
         <ObjectivePanel snapshot={snapshot} />
+        <CampaignPanel engine={engine} snapshot={snapshot} />
         <InspectorPanel inspection={stats?.inspection} engine={engine} />
+        <GameDebugPanel engine={engine} stats={stats} snapshot={snapshot} />
         <div className="game-card">
           <div className="game-panel-title">EMERGÊNCIA</div>
           <div className="game-action-row">
