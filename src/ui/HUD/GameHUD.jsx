@@ -67,10 +67,10 @@ export function GameHUD({ engine, stats }) {
         <div className="game-card">
           <div className="game-panel-title">EMERGÊNCIA</div>
           <div className="game-action-row">
-            <button onClick={() => engine?.game?.evacuation?.issue("VOLUNTARY")}>
+            <button onClick={() => engine?.game?.commandBus?.execute("evacuation:issue", { type: "VOLUNTARY" })}>
               Evacuação voluntária
             </button>
-            <button onClick={() => engine?.game?.evacuation?.issue("MANDATORY")}>
+            <button onClick={() => engine?.game?.commandBus?.execute("evacuation:issue", { type: "MANDATORY" })}>
               Evacuação obrigatória
             </button>
           </div>
