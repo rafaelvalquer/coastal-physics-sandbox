@@ -43,7 +43,7 @@ export function GameShell() {
 
       <div className="simulation-status-chip">
         <span className="live-dot" />
-        <span>SIMULAÇÃO 2D · FIXED STEP 120 Hz</span>
+        <span>{state.mode === "LAB" ? "SIMULATION LAB" : "GAME MODE"} · FIXED STEP 120 Hz</span>
       </div>
 
       <TopHUD engine={engine} snapshot={snapshot} />
