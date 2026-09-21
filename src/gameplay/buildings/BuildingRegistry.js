@@ -1,0 +1,2 @@
+import { BUILDING_TYPES } from "../../data/buildings.js";
+export class BuildingRegistry { get(type){ return BUILDING_TYPES[type]||null; } list(){ return Object.entries(BUILDING_TYPES).map(([type,config])=>({type,...config})); } }

@@ -32,6 +32,8 @@ export class ErosionSystem {
 
       const idx = this.terrain.index(surface.x, topCellY);
       const moisture = this.terrain.moisture[idx] || 0;
+      const vegetation = this.terrain.vegetation?.[idx] || 0;
+      const rootStrength = this.terrain.rootStrength?.[idx] || 0;
       const u = Math.abs(this.water.velocityAtIndex(i)) / PX_PER_METER;
       const rippleV = Math.abs(this.surfaceWaves.velocity[i]) / PX_PER_METER;
       const breaking = this.water.breaking[i];
@@ -48,11 +50,13 @@ export class ErosionSystem {
       const shear = currentShear + orbitalShear + breakerImpulse;
 
       const saturationWeakening = 1 - moisture * (mat.key === 'SOIL' || mat.key === 'CLAY' ? 0.58 : 0.28);
-      const threshold = mat.criticalShear * clamp(saturationWeakening, 0.34, 1);
+      const vegetationResistance = 1 + vegetation * (0.8 + rootStrength * 2.6);
+      const threshold = mat.criticalShear * clamp(saturationWeakening, 0.34, 1) * vegetationResistance;
 
       if (shear > threshold && Number.isFinite(threshold)) {
         const excess = clamp((shear - threshold) / Math.max(0.05, threshold), 0, 8);
-        const damage = mat.erodibility * excess * 0.85 * dt;
+        const vegetationErodibility = clamp(1 - vegetation * 0.58, 0.32, 1);
+        const damage = mat.erodibility * vegetationErodibility * excess * 0.85 * dt;
         const result = this.terrain.damageCell(surface.x, topCellY, damage);
         const sedimentGain = damage * (mat.key === 'ROCK' || mat.key === 'CONCRETE' ? 0.018 : 0.075);
         this.water.sediment[i] += sedimentGain;

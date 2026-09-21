@@ -1,0 +1,1 @@
+import { CONSTRUCTION_TYPES } from "../../data/constructions.js"; export class ConstructionCatalog { list(){ return Object.entries(CONSTRUCTION_TYPES).map(([type,c])=>({type,...c})); } get(type){return CONSTRUCTION_TYPES[type]||null;} }

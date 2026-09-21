@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - feature/gameplay-city-engineering-complete-v4
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Unit and integration tests
+        run: npm test
+      - name: Physics smoke
+        run: npm run test:physics
+      - name: Production build
+        run: npm run build

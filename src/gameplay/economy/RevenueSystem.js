@@ -1,0 +1,2 @@
+import { ECONOMY_CONFIG } from "../../data/economy.js";
+export class RevenueSystem { monthly({population=0,portOperational=false}){ return population*ECONOMY_CONFIG.baseTaxPerResident+(portOperational?ECONOMY_CONFIG.portRevenue:0)+ECONOMY_CONFIG.governmentTransfer; } }

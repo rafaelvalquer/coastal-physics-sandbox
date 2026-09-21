@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { GameCanvas } from './components/GameCanvas.jsx';
 import { ControlPanel } from './components/ControlPanel.jsx';
+import { GameHUD } from './ui/HUD/GameHUD.jsx';
 import './styles.css';
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
           <span className="physics-note">água rasa + erosão + sedimentos + granular + empuxo</span>
         </div>
         <GameCanvas onEngineReady={handleEngineReady} onStats={handleStats} />
+        <GameHUD engine={engine} stats={stats} />
         <div className="canvas-hint">Clique para aplicar a ferramenta selecionada. Arraste para pintar ou escavar.</div>
       </section>
     </main>

@@ -12,6 +12,7 @@ import { RigidBodySystem } from './physics/RigidBodySystem.js';
 import { ParticleSystem } from './particles/ParticleSystem.js';
 import { Renderer } from './rendering/Renderer.js';
 import { clamp } from './utils/math.js';
+import { Game } from '../core/Game.js';
 
 export class GameEngine {
   constructor(canvas, onStats) {
@@ -40,11 +41,13 @@ export class GameEngine {
     this.brushSize = 2;
     this.pointer = { x: 0, y: 0, inside: false, down: false };
     this.debug = { grid: false, velocity: false, pressure: false, sediment: false, moisture: false };
+    this.game = new Game(this);
     this.destroyed = false;
     this.frameHandle = 0;
 
     this.spawnInitialDebris();
     this.bindInput();
+    this.bindHotkeys();
     this.frameHandle = requestAnimationFrame((t) => this.frame(t));
   }
 
@@ -70,9 +73,20 @@ export class GameEngine {
     for (const [name, handler] of Object.entries(this.handlers)) this.canvas.addEventListener(name, handler);
   }
 
+  bindHotkeys() {
+    this.keyHandler = (event) => {
+      const match = /^F([1-9]|10)$/.exec(event.key);
+      if (!match) return;
+      event.preventDefault();
+      this.game?.setOverlayByIndex(Number(match[1]) - 1);
+    };
+    window.addEventListener('keydown', this.keyHandler);
+  }
+
   destroy() {
     this.destroyed = true;
     cancelAnimationFrame(this.frameHandle);
+    if (this.keyHandler) window.removeEventListener('keydown', this.keyHandler);
     for (const [name, handler] of Object.entries(this.handlers || {})) this.canvas.removeEventListener(name, handler);
     this.renderer.destroy();
   }
@@ -105,6 +119,7 @@ export class GameEngine {
 
   step(dt) {
     this.simTime += dt;
+    this.game?.update(dt);
     this.atmosphere.update(dt);
     this.water.update(dt);
     this.surfaceWaves.update(dt);
@@ -122,7 +137,14 @@ export class GameEngine {
   }
 
   applyTool(x, y, initialClick) {
-    if (this.tool === TOOLS.INSPECT) return;
+    if (this.game?.state.selectedConstruction) {
+      if (initialClick) this.game.handleWorldClick(x, y);
+      return;
+    }
+    if (this.tool === TOOLS.INSPECT) {
+      if (initialClick) this.game?.handleWorldClick(x, y);
+      return;
+    }
     if (this.tool === TOOLS.IMPULSE) {
       if (!initialClick) return;
       this.water.addImpulse(x, -1.35);
@@ -173,7 +195,7 @@ export class GameEngine {
   setTool(tool) { this.tool = tool; }
   setBrushSize(size) { this.brushSize = clamp(Number(size), 1, 7); }
   setRunning(value) { this.running = Boolean(value); }
-  setSimulationSpeed(value) { this.simulationSpeed = clamp(Number(value), 0.25, 4); }
+  setSimulationSpeed(value) { this.simulationSpeed = clamp(Number(value), 0.25, 8); }
 
   setEnvironment(partial) {
     if ('wind' in partial) this.atmosphere.wind = clamp(Number(partial.wind), -30, 30);
@@ -193,7 +215,10 @@ export class GameEngine {
     }
   }
 
-  resetWorld() {
+  resetWorld(
+    scenarioId = this.game?.scenario?.id || "porto-esperanca",
+    difficulty = this.game?.difficulty?.level || "NORMAL"
+  ) {
     this.terrain.generateIsland();
     this.water.refreshBed();
     this.water.resetWater();
@@ -206,8 +231,15 @@ export class GameEngine {
     this.erosion.totalSedimentDeposited = 0;
     this.rigidBodies.bodies = [];
     this.particles.items = [];
+    this.atmosphere.hydrate({ time: 0, wind: 8, gustiness: 0.28, rain: 0, tide: 0 });
     this.simTime = 0;
+    this.game = new Game(this, scenarioId, difficulty);
     this.spawnInitialDebris();
+  }
+
+  loadScenario(scenarioId, difficulty = "NORMAL") {
+    this.resetWorld(scenarioId, difficulty);
+    return this.game.snapshot();
   }
 
   getInspection() {
@@ -227,7 +259,8 @@ export class GameEngine {
       velocity: this.water.velocityAtIndex(wi) / 48,
       pressure: this.water.pressure[wi],
       sediment: this.water.sediment[wi],
-      breaking: this.water.breaking[wi]
+      breaking: this.water.breaking[wi],
+      building: this.game?.inspectAt?.(x, y) || null
     };
   }
 
@@ -244,13 +277,15 @@ export class GameEngine {
       erodedCells: this.terrain.erodedCells,
       bodies: this.rigidBodies.bodies.length,
       particles: this.particles.items.length,
-      inspection: this.getInspection()
+      inspection: this.getInspection(),
+      gameplay: this.game?.snapshot?.() || null
     };
   }
 
   serialize() {
     return {
-      version: 1,
+      version: 2,
+      saveVersion: 1,
       simTime: this.simTime,
       simulationSpeed: this.simulationSpeed,
       terrain: this.terrain.serialize(),
@@ -259,7 +294,8 @@ export class GameEngine {
       surfaceWaves: this.surfaceWaves.serialize(),
       erosion: this.erosion.serialize(),
       rigidBodies: this.rigidBodies.serialize(),
-      particles: this.particles.serialize()
+      particles: this.particles.serialize(),
+      gameplay: this.game?.serialize?.() || null
     };
   }
 
@@ -272,7 +308,13 @@ export class GameEngine {
     this.erosion.hydrate(state.erosion);
     this.rigidBodies.hydrate(state.rigidBodies);
     this.particles.hydrate(state.particles);
+    const scenarioId = state.gameplay?.scenarioId || this.game?.scenario?.id || "porto-esperanca";
+    const difficulty = state.gameplay?.difficulty?.level || this.game?.difficulty?.level || "NORMAL";
+    if (this.game?.scenario?.id !== scenarioId || this.game?.difficulty?.level !== difficulty) {
+      this.game = new Game(this, scenarioId, difficulty);
+    }
+    this.game?.hydrate?.(state.gameplay || {});
     this.simTime = Number(state.simTime || 0);
-    this.simulationSpeed = clamp(Number(state.simulationSpeed || 1), 0.25, 4);
+    this.simulationSpeed = clamp(Number(state.simulationSpeed || 1), 0.25, 8);
   }
 }
