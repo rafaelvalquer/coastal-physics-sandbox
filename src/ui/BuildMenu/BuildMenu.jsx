@@ -36,7 +36,15 @@ export function BuildMenu({ engine, snapshot }) {
       </div>
       {selected && (
         <div className="game-build-hint">
-          Clique no mapa para construir 20 m. Clique novamente no item para cancelar.
+          <span>Clique no mapa para construir 20 m. Clique novamente no item para cancelar.</span>
+          {snapshot?.constructionPreview && (
+            <b>
+              {snapshot.constructionPreview.valid ? "Posição válida" : snapshot.constructionPreview.reason}
+              {" · $" + Math.round(snapshot.constructionPreview.cost || 0).toLocaleString("pt-BR")}
+              {snapshot.constructionPreview.soil?.material ? " · " + snapshot.constructionPreview.soil.material : ""}
+              {snapshot.constructionPreview.risk ? " · risco " + snapshot.constructionPreview.risk.toLowerCase() : ""}
+            </b>
+          )}
         </div>
       )}
     </div>
