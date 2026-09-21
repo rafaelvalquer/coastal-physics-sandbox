@@ -3,7 +3,8 @@ name: CI
 on:
   push:
     branches:
-      - feature/gameplay-city-engineering-complete-v4
+      - main
+      - 'feature/**'
   pull_request:
 
 jobs:

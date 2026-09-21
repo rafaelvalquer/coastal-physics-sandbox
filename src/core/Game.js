@@ -180,12 +180,21 @@ export class Game {
   bindEvents() {
     this.eventBus.on("building:destroyed", ({ buildingId }) => {
       this.population.buildingDestroyed(buildingId);
-      this.state.pushMessage("Edificação destruída: " + buildingId, "danger");
+      const building = this.buildings.get(buildingId);
+      this.state.pushMessage("Edificação destruída: " + buildingId, "danger", {
+        entityId: buildingId,
+        x: building?.x,
+        y: building?.y
+      });
     });
     this.eventBus.on("building:damaged", ({ buildingId }) => {
       const building = this.buildings.get(buildingId);
       if (building && building.integrityRatio < 0.6) {
-        this.state.pushMessage("Dano severo em " + buildingId, "warning");
+        this.state.pushMessage("Dano severo em " + buildingId, "warning", {
+          entityId: buildingId,
+          x: building.x,
+          y: building.y
+        });
       }
     });
     this.eventBus.on("construction:placed", ({ construction }) => {
@@ -207,7 +216,12 @@ export class Game {
       this.state.pushMessage("Drenagem operando acima da capacidade.", "warning");
     });
     this.eventBus.on("construction:failed", ({ constructionId }) => {
-      this.state.pushMessage("Falha estrutural em " + constructionId, "danger");
+      const construction = this.constructions.list().find((item) => item.id === constructionId);
+      this.state.pushMessage("Falha estrutural em " + constructionId, "danger", {
+        entityId: constructionId,
+        x: construction?.x,
+        y: construction?.y
+      });
     });
     this.eventBus.on("objective:completed", ({ id }) => {
       this.technology.grant(1);
@@ -231,6 +245,29 @@ export class Game {
       const requested = this.evacuation.issue(type);
       if (this.tutorial.current === "PREPARE_STORM") this.tutorial.complete();
       return { ok: true, requested };
+    });
+    this.commandBus.register("evacuation:building", ({ buildingId, type = "MANDATORY" }) => {
+      const requested = this.evacuation.issueBuilding(buildingId, type);
+      this.state.pushMessage(
+        requested > 0
+          ? "Evacuação iniciada em " + buildingId + ": " + requested + " pessoas."
+          : "Nenhum morador aguardando evacuação em " + buildingId + ".",
+        requested > 0 ? "warning" : "info",
+        { entityId: buildingId }
+      );
+      return { ok: true, requested };
+    });
+    this.commandBus.register("utility:prioritize-power", ({ buildingId }) => {
+      const building = this.buildings.get(buildingId);
+      if (!building) return { ok: false, reason: "Prédio não encontrado" };
+      const nodeId = building.type === "HOSPITAL"
+        ? "hospital"
+        : building.type === "POWER_PLANT"
+          ? "plant"
+          : "city";
+      const ok = this.power.setPriority(nodeId, 10);
+      if (ok) this.state.pushMessage("Energia priorizada para " + buildingId + ".", "success", { entityId: buildingId });
+      return { ok, nodeId };
     });
     this.commandBus.register("building:repair", ({ id, amount = 25, cost = 1500 }) => {
       const building = this.buildings.get(id);
@@ -298,8 +335,10 @@ export class Game {
 
   handleWorldClick(x, y) {
     if (!this.state.selectedConstruction) {
+      const inspection = this.engine.inspectWorld?.(x, y) || null;
+      this.state.selectInspection(inspection);
       if (this.tutorial.current === "INSPECT_COAST") this.tutorial.complete();
-      return null;
+      return inspection;
     }
     const result = this.constructionTool.place({ x, y });
     if (result.ok) this.clearConstruction();
@@ -385,6 +424,12 @@ export class Game {
       this.buildings.list().map((building) => [building.id, {
         id: building.id,
         type: building.type,
+        x: building.x,
+        y: building.y,
+        width: building.width,
+        height: building.height,
+        occupants: building.occupants,
+        capacity: building.capacity,
         integrity: building.integrity,
         integrityRatio: building.integrityRatio,
         operational: building.operational,
@@ -427,6 +472,7 @@ export class Game {
         completed: this.tutorial.completed
       },
       selectedConstruction: this.state.selectedConstruction,
+      selectedInspection: this.state.selectedInspection,
       constructionPreview: this.state.selectedConstruction && this.engine.pointer?.inside
         ? this.constructionTool.inspect({ x: this.engine.pointer.x, y: this.engine.pointer.y })
         : null,
@@ -438,9 +484,7 @@ export class Game {
       technology: [...this.technology.unlocked],
       achievements: [...this.achievements.unlocked],
       difficulty: this.difficulty.level,
-      campaign: this.campaign.serialize(),
-      achievements: this.achievements.serialize(),
-      difficulty: this.difficulty.serialize()
+      campaign: this.campaign.serialize()
     };
   }
 
@@ -473,7 +517,9 @@ export class Game {
       power: this.power.serialize(),
       waterUtility: this.waterUtility.serialize(),
       technology: this.technology.serialize(),
-      campaign: this.campaign.serialize()
+      campaign: this.campaign.serialize(),
+      achievements: this.achievements.serialize(),
+      difficulty: this.difficulty.serialize()
     };
   }
 
