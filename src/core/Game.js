@@ -51,7 +51,12 @@ export class Game {
     this.random = new SeededRandom(this.scenario.seed);
 
     this.buildings = new BuildingManager(this.eventBus);
-    for (const config of this.scenario.buildings) this.buildings.add(config);
+    for (const config of this.scenario.buildings) {
+      this.buildings.add({
+        ...config,
+        y: engine.terrain.columnTopWorldYAt(config.x)
+      });
+    }
 
     this.population = new PopulationManager({
       initialPopulation: this.scenario.initialPopulation,
@@ -255,9 +260,8 @@ export class Game {
 
   update(physicsDt) {
     const scale = Math.max(1, this.clock.timeScale || 1);
-    const calendarDt = physicsDt / scale;
-
     this.loop.consume(physicsDt, (dt) => {
+      const calendarDt = dt / scale;
       this.clock.update(calendarDt);
       this.weather.update(calendarDt, this.clock);
 
