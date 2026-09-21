@@ -25,23 +25,46 @@ export class Renderer {
       this.canvas.width = width;
       this.canvas.height = height;
     }
+    this.engine.camera?.setViewport(width, height);
   }
 
   getTransform() {
+    if (this.engine.camera) return this.engine.camera.getTransform();
     const scale = Math.min(this.canvas.width / WORLD.width, this.canvas.height / WORLD.height);
     const ox = (this.canvas.width - WORLD.width * scale) / 2;
     const oy = (this.canvas.height - WORLD.height * scale) / 2;
     return { scale, ox, oy };
   }
 
-  clientToWorld(clientX, clientY) {
+  clientToCanvas(clientX, clientY) {
     const rect = this.canvas.getBoundingClientRect();
-    const px = (clientX - rect.left) * this.pixelRatio;
-    const py = (clientY - rect.top) * this.pixelRatio;
+    return {
+      x: (clientX - rect.left) * this.pixelRatio,
+      y: (clientY - rect.top) * this.pixelRatio
+    };
+  }
+
+  clientToWorld(clientX, clientY) {
+    const point = this.clientToCanvas(clientX, clientY);
+    if (this.engine.camera) return this.engine.camera.screenToWorld(point.x, point.y);
     const { scale, ox, oy } = this.getTransform();
     return {
-      x: clamp((px - ox) / scale, 0, WORLD.width - 0.001),
-      y: clamp((py - oy) / scale, 0, WORLD.height - 0.001)
+      x: clamp((point.x - ox) / scale, 0, WORLD.width - 0.001),
+      y: clamp((point.y - oy) / scale, 0, WORLD.height - 0.001)
+    };
+  }
+
+  worldToClient(x, y) {
+    const screen = this.engine.camera
+      ? this.engine.camera.worldToScreen(x, y)
+      : (() => {
+          const { scale, ox, oy } = this.getTransform();
+          return { x: x * scale + ox, y: y * scale + oy };
+        })();
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: rect.left + screen.x / this.pixelRatio,
+      y: rect.top + screen.y / this.pixelRatio
     };
   }
 
