@@ -151,7 +151,12 @@ export class WaterSolver {
         // Bed friction / quadratic drag. Stronger in shallow water.
         const hMeters = Math.max(0.05, h / PX_PER_METER);
         const uMeters = u / PX_PER_METER;
-        const cf = 0.008 + 0.018 / (1 + hMeters * 2.5);
+        const surfaceCell = this.terrain.surfaceCellForWorldX((i + 0.5) * this.dx);
+        const surfaceIndex = surfaceCell.y < this.terrain.rows
+          ? this.terrain.index(surfaceCell.x, surfaceCell.y)
+          : -1;
+        const vegetation = surfaceIndex >= 0 ? (this.terrain.vegetation?.[surfaceIndex] || 0) : 0;
+        const cf = (0.008 + 0.018 / (1 + hMeters * 2.5)) * (1 + vegetation * 1.6);
         const duFrictionMeters = -cf * uMeters * Math.abs(uMeters) / hMeters;
         u += duFrictionMeters * PX_PER_METER * dt;
 

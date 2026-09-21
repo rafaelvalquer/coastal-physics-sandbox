@@ -11,6 +11,8 @@ export class TerrainGrid {
     this.material = new Uint8Array(count);
     this.integrity = new Float32Array(count);
     this.moisture = new Float32Array(count);
+    this.vegetation = new Float32Array(count);
+    this.rootStrength = new Float32Array(count);
     this.age = new Float32Array(count);
     this.erodedCells = 0;
     this.generateIsland();
@@ -43,6 +45,10 @@ export class TerrainGrid {
     this.material[idx] = materialId;
     this.integrity[idx] = materialId === MATERIALS.AIR.id ? 0 : clamp(integrity, 0, 1);
     this.moisture[idx] = materialId === MATERIALS.AIR.id ? 0 : clamp(moisture, 0, 1);
+    if (materialId === MATERIALS.AIR.id) {
+      this.vegetation[idx] = 0;
+      this.rootStrength[idx] = 0;
+    }
     this.age[idx] = 0;
   }
 
@@ -91,6 +97,8 @@ export class TerrainGrid {
     this.material.fill(MATERIALS.AIR.id);
     this.integrity.fill(0);
     this.moisture.fill(0);
+    this.vegetation.fill(0);
+    this.rootStrength.fill(0);
 
     for (let x = 0; x < this.cols; x++) {
       const nx = x / (this.cols - 1);
@@ -137,6 +145,8 @@ export class TerrainGrid {
       material: Array.from(this.material),
       integrity: Array.from(this.integrity),
       moisture: Array.from(this.moisture),
+      vegetation: Array.from(this.vegetation),
+      rootStrength: Array.from(this.rootStrength),
       erodedCells: this.erodedCells
     };
   }
@@ -146,6 +156,8 @@ export class TerrainGrid {
     if (data.material?.length === this.material.length) this.material.set(data.material);
     if (data.integrity?.length === this.integrity.length) this.integrity.set(data.integrity);
     if (data.moisture?.length === this.moisture.length) this.moisture.set(data.moisture);
+    if (data.vegetation?.length === this.vegetation.length) this.vegetation.set(data.vegetation);
+    if (data.rootStrength?.length === this.rootStrength.length) this.rootStrength.set(data.rootStrength);
     this.erodedCells = Number(data.erodedCells || 0);
   }
 }
