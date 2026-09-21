@@ -58,6 +58,7 @@ export class Renderer {
     this.drawSky(ctx);
     this.drawWater(ctx);
     this.drawTerrain(ctx);
+    this.engine.game?.render?.(ctx);
     this.drawRigidBodies(ctx);
     this.drawParticles(ctx);
     this.drawDebug(ctx);
