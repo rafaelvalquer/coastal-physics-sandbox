@@ -140,7 +140,7 @@ export class GameEngine {
 
       if (event.code === "Home") {
         event.preventDefault();
-        this.focusGameplay();
+        this.fitWorld();
       } else if (event.code === "Equal" || event.code === "NumpadAdd") {
         event.preventDefault();
         this.camera.zoomBy(1.12);
