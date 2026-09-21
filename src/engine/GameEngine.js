@@ -47,6 +47,7 @@ export class GameEngine {
 
     this.spawnInitialDebris();
     this.bindInput();
+    this.bindHotkeys();
     this.frameHandle = requestAnimationFrame((t) => this.frame(t));
   }
 
@@ -72,9 +73,20 @@ export class GameEngine {
     for (const [name, handler] of Object.entries(this.handlers)) this.canvas.addEventListener(name, handler);
   }
 
+  bindHotkeys() {
+    this.keyHandler = (event) => {
+      const match = /^F([1-9]|10)$/.exec(event.key);
+      if (!match) return;
+      event.preventDefault();
+      this.game?.setOverlayByIndex(Number(match[1]) - 1);
+    };
+    window.addEventListener('keydown', this.keyHandler);
+  }
+
   destroy() {
     this.destroyed = true;
     cancelAnimationFrame(this.frameHandle);
+    if (this.keyHandler) window.removeEventListener('keydown', this.keyHandler);
     for (const [name, handler] of Object.entries(this.handlers || {})) this.canvas.removeEventListener(name, handler);
     this.renderer.destroy();
   }
@@ -217,6 +229,7 @@ export class GameEngine {
     this.rigidBodies.bodies = [];
     this.particles.items = [];
     this.simTime = 0;
+    this.game = new Game(this);
     this.spawnInitialDebris();
   }
 
@@ -237,7 +250,8 @@ export class GameEngine {
       velocity: this.water.velocityAtIndex(wi) / 48,
       pressure: this.water.pressure[wi],
       sediment: this.water.sediment[wi],
-      breaking: this.water.breaking[wi]
+      breaking: this.water.breaking[wi],
+      building: this.game?.inspectAt?.(x, y) || null
     };
   }
 
