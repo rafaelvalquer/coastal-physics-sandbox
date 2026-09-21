@@ -17,10 +17,14 @@ export function uiReducer(state, action) {
       };
     case "CLOSE_PANEL":
       return { ...state, activePanel: null };
-    case "TOGGLE_LAB":
-      return { ...state, simulationLabOpen: !state.simulationLabOpen };
-    case "SET_LAB":
-      return { ...state, simulationLabOpen: Boolean(action.open) };
+    case "TOGGLE_LAB": {
+      const open = !state.simulationLabOpen;
+      return { ...state, simulationLabOpen: open, mode: open ? "LAB" : "GAME" };
+    }
+    case "SET_LAB": {
+      const open = Boolean(action.open);
+      return { ...state, simulationLabOpen: open, mode: open ? "LAB" : "GAME" };
+    }
     case "TOGGLE_OVERLAYS":
       return { ...state, overlayToolbarOpen: !state.overlayToolbarOpen };
     case "TOGGLE_MINIMAP":
