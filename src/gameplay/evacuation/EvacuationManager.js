@@ -15,6 +15,17 @@ export class EvacuationManager {
     return requested;
   }
 
+  issueBuilding(buildingId, type = "MANDATORY") {
+    this.order = type;
+    this.pending = this.population.households.filter(
+      (household) => household.homeBuildingId === buildingId && !household.evacuated
+    );
+    this.progress = 0;
+    const requested = this.pending.reduce((sum, household) => sum + household.members, 0);
+    this.eventBus?.emit("evacuation:building-ordered", { type, buildingId, requested });
+    return requested;
+  }
+
   update(dt) {
     if (this.order === "NONE" || !this.pending.length) {
       for (const edge of this.roads.edges.values()) edge.volume = 0;
