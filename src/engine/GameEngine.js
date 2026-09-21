@@ -12,6 +12,7 @@ import { RigidBodySystem } from './physics/RigidBodySystem.js';
 import { ParticleSystem } from './particles/ParticleSystem.js';
 import { Renderer } from './rendering/Renderer.js';
 import { clamp } from './utils/math.js';
+import { Game } from '../core/Game.js';
 
 export class GameEngine {
   constructor(canvas, onStats) {
@@ -40,6 +41,7 @@ export class GameEngine {
     this.brushSize = 2;
     this.pointer = { x: 0, y: 0, inside: false, down: false };
     this.debug = { grid: false, velocity: false, pressure: false, sediment: false, moisture: false };
+    this.game = new Game(this);
     this.destroyed = false;
     this.frameHandle = 0;
 
@@ -105,6 +107,7 @@ export class GameEngine {
 
   step(dt) {
     this.simTime += dt;
+    this.game?.update(dt);
     this.atmosphere.update(dt);
     this.water.update(dt);
     this.surfaceWaves.update(dt);
@@ -122,7 +125,14 @@ export class GameEngine {
   }
 
   applyTool(x, y, initialClick) {
-    if (this.tool === TOOLS.INSPECT) return;
+    if (this.game?.state.selectedConstruction) {
+      if (initialClick) this.game.handleWorldClick(x, y);
+      return;
+    }
+    if (this.tool === TOOLS.INSPECT) {
+      if (initialClick) this.game?.handleWorldClick(x, y);
+      return;
+    }
     if (this.tool === TOOLS.IMPULSE) {
       if (!initialClick) return;
       this.water.addImpulse(x, -1.35);
@@ -173,7 +183,7 @@ export class GameEngine {
   setTool(tool) { this.tool = tool; }
   setBrushSize(size) { this.brushSize = clamp(Number(size), 1, 7); }
   setRunning(value) { this.running = Boolean(value); }
-  setSimulationSpeed(value) { this.simulationSpeed = clamp(Number(value), 0.25, 4); }
+  setSimulationSpeed(value) { this.simulationSpeed = clamp(Number(value), 0.25, 8); }
 
   setEnvironment(partial) {
     if ('wind' in partial) this.atmosphere.wind = clamp(Number(partial.wind), -30, 30);
@@ -244,13 +254,15 @@ export class GameEngine {
       erodedCells: this.terrain.erodedCells,
       bodies: this.rigidBodies.bodies.length,
       particles: this.particles.items.length,
-      inspection: this.getInspection()
+      inspection: this.getInspection(),
+      gameplay: this.game?.snapshot?.() || null
     };
   }
 
   serialize() {
     return {
-      version: 1,
+      version: 2,
+      saveVersion: 1,
       simTime: this.simTime,
       simulationSpeed: this.simulationSpeed,
       terrain: this.terrain.serialize(),
@@ -259,7 +271,8 @@ export class GameEngine {
       surfaceWaves: this.surfaceWaves.serialize(),
       erosion: this.erosion.serialize(),
       rigidBodies: this.rigidBodies.serialize(),
-      particles: this.particles.serialize()
+      particles: this.particles.serialize(),
+      gameplay: this.game?.serialize?.() || null
     };
   }
 
@@ -272,7 +285,8 @@ export class GameEngine {
     this.erosion.hydrate(state.erosion);
     this.rigidBodies.hydrate(state.rigidBodies);
     this.particles.hydrate(state.particles);
+    this.game?.hydrate?.(state.gameplay || {});
     this.simTime = Number(state.simTime || 0);
-    this.simulationSpeed = clamp(Number(state.simulationSpeed || 1), 0.25, 4);
+    this.simulationSpeed = clamp(Number(state.simulationSpeed || 1), 0.25, 8);
   }
 }
