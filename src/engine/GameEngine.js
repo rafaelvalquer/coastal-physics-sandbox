@@ -248,6 +248,7 @@ export class GameEngine {
     this.granular.update(dt);
     this.structural.update(dt);
     this.rigidBodies.update(dt, this.water, this.terrain);
+    this.water.setDebrisObstacles?.(this.rigidBodies.waterObstacles?.() || []);
     this.particles.update(dt, this.water, this.terrain);
     this.game?.postPhysicsUpdate?.(dt);
   }
@@ -525,6 +526,8 @@ export class GameEngine {
       sediment,
       erodedCells: this.terrain.erodedCells,
       bodies: this.rigidBodies.bodies.length,
+      rigidBodyCollisions: this.rigidBodies.collisionPairs || 0,
+      debrisPiles: this.rigidBodies.sleepingCount || 0,
       particles: this.particles.items.length,
       waterDiagnostics: this.water.diagnosticSnapshot?.() || null,
       inspection: this.getInspection(),
