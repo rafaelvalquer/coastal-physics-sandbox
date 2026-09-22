@@ -45,7 +45,7 @@ const FLOOD_ZONES=[
 export class LabApplication{
  constructor(engine){
   this.engine=engine;this.eventBus=new EventBus();this.commandBus=new CommandBus();this.state=new LabState();this.overlay=null;this.eventLog=[];this.finalSnapshot=null;this.comparison=null;
-  this.experiments=new ExperimentManager(new ExperimentDefinition({name:"Porto Esperança Lab",map:{template:"coastal-town",seed:48212}}));
+  this.experiments=new ExperimentManager(new ExperimentDefinition({name:"Extreme Weather Sandbox",mode:"SANDBOX",map:{template:"procedural-coast",seed:48212}}));
   this.buildings=new BuildingManager(this.eventBus);
   this.physicsAdapter=new PhysicsConstructionAdapter(engine,this.eventBus);
   this.validator=new PlacementValidator({terrain:engine.terrain,water:engine.water,budget:null,buildingManager:this.buildings});
@@ -90,8 +90,15 @@ export class LabApplication{
   this.experiments.replace(new ExperimentDefinition({name:challenge.title,mode:"CHALLENGE",map:{template:challenge.template,seed:48212},disaster:challenge.event,environment:{soilSaturation:challenge.environment?.soilSaturation??.35},constraints:{budget:challenge.budget}}));
   this.editor.setBudget(challenge.budget);this.editor.seed=this.experiments.current.map.seed;this.editor.applyTemplate(challenge.template);this.buildingStructures.rebuildAll();this.refreshObservers();this.disasterController.experiment=this.experiments.current;this.disasterController.rebuild();this.runner.baseline.value=null;this.state.analysisOpen=false;this.engine.camera.fitWorld();return {ok:true,challenge};
  }
+ setExperienceMode(mode){
+  const next=mode==="CAMPAIGN"?"CAMPAIGN":"SIMULATOR";
+  this.state.experienceMode=next;
+  if(next==="SIMULATOR"&&this.experiments.current.mode==="CHALLENGE")this.startSandbox();
+  this.state.message(next==="SIMULATOR"?"Modo Simulador ativado":"Modo Campanha ativado","info");
+  return {ok:true,mode:next};
+ }
  startSandbox(){
-  this.challenges.clear();this.experiments.replace(new ExperimentDefinition({name:"Sandbox",mode:"SANDBOX",map:{template:"coastal-town",seed:48212}}));this.editor.setBudget(null);this.editor.seed=this.experiments.current.map.seed;this.editor.applyTemplate("procedural-coast");this.buildingStructures.rebuildAll();this.refreshObservers();this.disasterController.experiment=this.experiments.current;this.disasterController.rebuild();this.runner.baseline.value=null;this.state.analysisOpen=false;return {ok:true};
+  this.challenges.clear();this.experiments.replace(new ExperimentDefinition({name:"Sandbox",mode:"SANDBOX",map:{template:"procedural-coast",seed:48212}}));this.editor.setBudget(null);this.editor.seed=this.experiments.current.map.seed;this.editor.applyTemplate("procedural-coast");this.buildingStructures.rebuildAll();this.refreshObservers();this.disasterController.experiment=this.experiments.current;this.disasterController.rebuild();this.runner.baseline.value=null;this.state.analysisOpen=false;return {ok:true};
  }
  prepareRun(){
   this.eventLog=[];this.state.messages=[];this.metrics.reset(this.engine.water.n);this.replay.reset();this.finalSnapshot=null;this.comparison=null;this.damage.elapsed=0;this.disasterController.experiment=this.experiments.current;this.disasterController.rebuild();this.disasterController.prepareEnvironment();this.disasterController.update(0);this.engine.water.refreshBed();this.engine.water.updateDerived?.();this.recordEvent("Simulação iniciada","info");
@@ -128,8 +135,8 @@ export class LabApplication{
   const result=this.experiments.runHistory[0]?.serialize?.()||this.experiments.runHistory[0]||null;
   return {mode:"LAB",experienceMode:this.state.experienceMode||"SIMULATOR",scenarioName:this.editor.template?.name||"Extreme Weather Lab",buildingStructures:this.buildingStructures.snapshot(),experiment:this.experiments.snapshot(),runner:this.runner.snapshot(),editor:this.editor.snapshot(),disaster:this.disasterController.snapshot(),metrics:this.metrics.snapshot(),result,comparison:this.comparison,challenge:this.challenges.snapshot(),events:this.eventLog.slice(-80),overlay:this.overlay,templates:ScenarioSerializer.list(),state:this.state.snapshot(),selectedInspection:this.state.selectedInspection,messages:this.state.messages};
  }
- serialize(){return {saveVersion:3,type:"LAB_EXPERIMENT",experiment:this.experiments.current.serialize(),experimentState:this.experiments.state,scene:this.serializeScene(),baseline:this.runner.baseline.serialize(),lastRun:this.experiments.runHistory[0]?.serialize?.()||null,runs:this.experiments.runHistory.map(r=>r.serialize?.()||r),challenge:this.challenges.active?.id||null};}
+ serialize(){return {saveVersion:4,type:"LAB_EXPERIMENT",experienceMode:this.state.experienceMode,experiment:this.experiments.current.serialize(),experimentState:this.experiments.state,scene:this.serializeScene(),baseline:this.runner.baseline.serialize(),lastRun:this.experiments.runHistory[0]?.serialize?.()||null,runs:this.experiments.runHistory.map(r=>r.serialize?.()||r),challenge:this.challenges.active?.id||null};}
  hydrate(v={}){
-  if(v.type!=="LAB_EXPERIMENT")return false;this.experiments.replace(new ExperimentDefinition(v.experiment||{}));this.editor.applyTemplate(this.experiments.current.map.template);this.hydrateScene(v.scene||{});this.runner.baseline.hydrate(v.baseline||null);this.experiments.runHistory=(v.runs||[]);this.disasterController.experiment=this.experiments.current;this.disasterController.rebuild();if(v.challenge)this.challenges.start(v.challenge);return true;
+  if(v.type!=="LAB_EXPERIMENT")return false;this.state.experienceMode=v.experienceMode==="CAMPAIGN"?"CAMPAIGN":"SIMULATOR";this.experiments.replace(new ExperimentDefinition(v.experiment||{}));this.editor.applyTemplate(this.experiments.current.map.template);this.hydrateScene(v.scene||{});this.runner.baseline.hydrate(v.baseline||null);this.experiments.runHistory=(v.runs||[]);this.disasterController.experiment=this.experiments.current;this.disasterController.rebuild();if(v.challenge)this.challenges.start(v.challenge);return true;
  }
 }
