@@ -120,8 +120,12 @@ export class WeatherDirector {
   }
 
   getForecast(days = 3) {
-    if (this.nextStorm) return this.forecastSystem.forecast(this.nextStorm, days);
-    if (this.activeStorm) return this.forecastSystem.forecast(this.activeStorm, Math.min(1, days));
+    if (this.nextStorm && this.forecastAnnounced) {
+      return this.forecastSystem.forecast(this.nextStorm, days);
+    }
+    if (this.activeStorm) {
+      return this.forecastSystem.forecast(this.activeStorm, Math.min(1, days));
+    }
     return null;
   }
 
