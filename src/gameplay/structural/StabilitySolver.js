@@ -5,15 +5,17 @@ import { UpliftSolver } from "./UpliftSolver.js";
 import { StabilityResult } from "./StabilityResult.js";
 
 export class StabilitySolver {
-  constructor({ water, foundation }) {
+  constructor({ water, foundation, fluidStructureCoupler = null }) {
     this.water = water;
     this.foundation = foundation;
+    this.fluidStructureCoupler = fluidStructureCoupler;
   }
 
   solve(assembly) {
     const forces = StructuralForces.calculate(assembly, {
       water: this.water,
-      foundation: this.foundation
+      foundation: this.foundation,
+      fluidStructureCoupler: this.fluidStructureCoupler
     });
     const result = new StabilityResult({
       forces,

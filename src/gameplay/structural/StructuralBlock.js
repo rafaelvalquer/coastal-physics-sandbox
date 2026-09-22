@@ -13,6 +13,7 @@ export class StructuralBlock {
     progress = 1,
     rotation = 0,
     displacementX = 0,
+    displacementY = 0,
     ...rest
   } = {}) {
     const config = STRUCTURAL_BLOCKS[type];
@@ -27,6 +28,7 @@ export class StructuralBlock {
     this.progress = progress;
     this.rotation = rotation;
     this.displacementX = displacementX;
+    this.displacementY = displacementY;
     this.connected = rest.connected ?? true;
     this.anchored = rest.anchored ?? false;
     this.assemblyId = rest.assemblyId || null;
@@ -54,7 +56,7 @@ export class StructuralBlock {
     const base = grid.cellToWorld(this.gridX, this.gridY);
     return {
       x: base.x + (this.width * 48 - grid.cellSize) / 2 + this.displacementX,
-      y: base.y - (this.height * 48 - grid.cellSize) / 2
+      y: base.y - (this.height * 48 - grid.cellSize) / 2 + this.displacementY
     };
   }
 
@@ -69,7 +71,10 @@ export class StructuralBlock {
       progress: this.progress,
       rotation: this.rotation,
       displacementX: this.displacementX,
+      displacementY: this.displacementY,
       connected: this.connected,
+      buildingId: this.buildingId || null,
+      debrisMaterial: this.debrisMaterial || null,
       anchored: this.anchored,
       assemblyId: this.assemblyId,
       mass: this.mass

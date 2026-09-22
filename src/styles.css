@@ -1159,7 +1159,7 @@ input[type="range"] { width: 100%; accent-color: #25a5c2; }
   right: 14px;
   min-height: 58px;
   display: grid;
-  grid-template-columns: minmax(230px, 340px) 1fr;
+  grid-template-columns: minmax(230px, 340px) auto 1fr;
   gap: 12px;
   align-items: center;
   padding: 8px 10px;
@@ -1371,3 +1371,10 @@ input[type="range"] { width: 100%; accent-color: #25a5c2; }
   .lab-overlay-rail { display: none; }
   .analysis-metric-grid,.challenge-grid { grid-template-columns: 1fr 1fr; }
 }
+
+.lab-experience-toggle{display:flex;gap:3px;padding:3px;background:rgba(10,31,41,.75);border:1px solid rgba(57,102,119,.38);border-radius:8px}
+.lab-experience-toggle button{padding:5px 8px;font-size:7px;color:#73919d}
+.lab-experience-toggle button.active{color:#d8f1f2;border-color:#438b92;background:rgba(47,126,132,.25)}
+.lab-simulator-map{display:grid;gap:2px;margin-bottom:8px;padding:7px;background:rgba(10,30,39,.6);border:1px solid rgba(56,96,111,.28);border-radius:7px}
+.lab-simulator-map span,.lab-simulator-map small{color:#668590;font-size:6px}
+.lab-simulator-map b{color:#d8e8eb;font-size:9px}

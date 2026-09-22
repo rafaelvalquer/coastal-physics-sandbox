@@ -3,7 +3,7 @@ const G = 9.81;
 const PX_PER_METER = 48;
 
 export class StructuralForces {
-  static calculate(assembly, { water, foundation }) {
+  static calculate(assembly, { water, foundation, fluidStructureCoupler = null }) {
     if (!assembly.bounds || !assembly.blocks.length) {
       return {
         horizontalForce: 0,
@@ -29,7 +29,14 @@ export class StructuralForces {
     const area = Math.max(0.25, submergedHeight);
     const hydrostatic = 0.5 * RHO_WATER * G * submergedHeight * submergedHeight;
     const dynamic = 0.5 * RHO_WATER * 1.8 * area * velocity * Math.abs(velocity);
-    const horizontalForce = Math.max(0, hydrostatic + Math.abs(dynamic));
+    const coupledLoad = fluidStructureCoupler?.evaluate?.(
+      assembly.id,
+      sampleX,
+      { heightMeters: assembly.heightMeters, widthMeters: Math.max(0.5, assembly.baseWidthMeters) }
+    ) || null;
+    const horizontalForce = coupledLoad
+      ? Math.max(0, coupledLoad.horizontalForce)
+      : Math.max(0, hydrostatic + Math.abs(dynamic));
 
     const submergedVolume = assembly.blocks.reduce((sum, block) => {
       const center = block.worldCenter(foundation.grid);
@@ -55,8 +62,8 @@ export class StructuralForces {
     const frictionResistance = effectiveNormal * baseMu * foundationResistance.soilFactor;
 
     const leverArm = Math.max(0.15, submergedHeight / 3);
-    const waveMoment = horizontalForce * leverArm;
-    const verticalUplift = buoyancy + foundationResistance.underPressure;
+    const waveMoment = coupledLoad?.moment ?? (horizontalForce * leverArm);
+    const verticalUplift = buoyancy + foundationResistance.underPressure + (coupledLoad?.uplift || 0);
 
     return {
       horizontalForce,
@@ -74,7 +81,10 @@ export class StructuralForces {
       bearingCapacity: foundationResistance.bearingCapacity,
       underPressure: foundationResistance.underPressure,
       waterDepth: depth,
-      velocity
+      velocity,
+      peakPressure: coupledLoad?.peakPressure || (hydrostatic + Math.abs(dynamic)),
+      slammingForce: coupledLoad?.slammingForce || 0,
+      breaking: coupledLoad?.breaking || 0
     };
   }
 }

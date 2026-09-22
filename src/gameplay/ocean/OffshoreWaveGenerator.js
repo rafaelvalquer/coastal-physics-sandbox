@@ -14,8 +14,8 @@ export class OffshoreWaveGenerator{
   this.signature=signature;this.generator=new SpectralWaveGenerator({significantWaveHeight:hs,peakPeriod:tp,seed,direction});this.boundary=new WaveBoundary({generator:this.generator,direction});
  }
  update(dt){
-  const state=this.seaState.state;this.configureFromState(state);this.time+=dt;const offshoreDepth=Math.max(.5,(this.water.h[0]||PX*5)/PX),sample=this.boundary.sample(this.time,offshoreDepth),group=this.groupSystem.update(this.generator,this.time),visualGain=state.visualWaveGain||1;
-  this.water.setOffshoreBoundary?.({elevationPx:sample.elevationPx*group,velocityPx:sample.velocityPx,signal:sample.signal,groupIntensity:group,significantWaveHeightMeters:this.generator.significantWaveHeight,seed:this.generator.seed});
+  const state=this.seaState.state;this.configureFromState(state);this.time+=dt;const offshoreDepth=Math.max(.5,(this.water.h?.[0]??PX*5)/PX),sample=this.boundary.sample(this.time,offshoreDepth),group=this.groupSystem.update(this.generator,this.time),visualGain=state.visualWaveGain||1;
+  this.water.setOffshoreBoundary?.({elevationPx:sample.elevationPx*group,waveAmplitudePx:Math.max(0.5,Math.abs(sample.elevationPx)*group),velocityPx:sample.velocityPx,currentVelocityPx:sample.velocityPx,signal:sample.signal,groupIntensity:group,significantWaveHeightMeters:this.generator.significantWaveHeight,seed:this.generator.seed});
   this.surfaceWaves.setBoundaryForcing?.({amplitudePx:Math.min(14,Math.abs(sample.elevationPx)*.22+.8)*visualGain,signal:Math.max(-1.5,Math.min(1.5,sample.signal)),intensity:group});
   const rising=this.previousElevation<=0&&sample.elevationMeters>0;if(rising){this.crestCount++;this.eventBus?.emit("sea:wave-crest",{crest:this.crestCount,height:this.generator.significantWaveHeight*group,period:this.generator.peakPeriod,seed:this.generator.seed});}
   this.previousElevation=sample.elevationMeters;

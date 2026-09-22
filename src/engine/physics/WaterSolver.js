@@ -26,11 +26,11 @@ export class WaterSolver{
   this.massFlux=new Float32Array(this.n+1);this.momentumFluxLeft=new Float32Array(this.n+1);this.momentumFluxRight=new Float32Array(this.n+1);this.nextH=new Float32Array(this.n);this.nextQ=new Float32Array(this.n);this.sedimentFlux=new Float32Array(this.n+1);this.nextSediment=new Float32Array(this.n);
   this.wetDry=new WetDrySolver(this.n,{dryDepth:EPS,wetDepth:.14});this.cflController=new CFLController({cfl:.76,maxSubsteps:12});this.infiltration=new InfiltrationSystem(terrain);this.rainfall=new RainfallRunoffSystem({terrain,infiltration:this.infiltration});this.shoaling=new WaveShoalingSystem(this.n);this.breaker=new BreakingWaveSystem(this.n);this.swash=new SwashZoneSystem(this.n);this.foamField=new FoamField(this.n);this.foam=this.foamField.concentration;
   this.massBalance=new MassBalance();this.momentumBalance=new MomentumBalance();this.energyBalance=new EnergyBalance();this.diagnostics=new WaterDiagnostics({mass:this.massBalance,momentum:this.momentumBalance,energy:this.energyBalance,cfl:this.cflController});
-  this.baseSeaElevation=WORLD.height-WORLD.seaLevelY;this.time=0;this.totalVolume=0;this.kineticEnergy=0;this.waveEnergy=0;this.offshoreBoundary=null;this.structuralObstacles=[];this.significantWaveHeightMeters=1;this.refreshBed();this.resetWater();
+  this.baseSeaElevation=WORLD.height-WORLD.seaLevelY;this.time=0;this.totalVolume=0;this.kineticEnergy=0;this.waveEnergy=0;this.offshoreBoundary=null;this.structuralObstacles=[];this.buildingObstacles=[];this.debrisObstacles=[];this.significantWaveHeightMeters=1;this.refreshBed();this.resetWater();
  }
  refreshBed(){
   for(let i=0;i<this.n;i++){const x=(i+.5)*this.dx,bedY=this.terrain.columnTopWorldYAt(x);this.bed[i]=WORLD.height-bedY;}
-  for(const o of this.structuralObstacles||[]){const progress=clamp(o.progress??1,0,1);if(progress<=.02)continue;const permeability=clamp(o.permeability??0,0,1),effective=progress*(1-permeability*.55),crest=Math.max(0,(WORLD.height-o.topY)*effective),first=Math.max(0,Math.floor(o.minX/this.dx)),last=Math.min(this.n-1,Math.ceil(o.maxX/this.dx));for(let i=first;i<=last;i++)this.bed[i]=Math.max(this.bed[i],crest);}
+  for(const o of [...(this.structuralObstacles||[]),...(this.buildingObstacles||[]),...(this.debrisObstacles||[])]){const progress=clamp(o.progress??1,0,1);if(progress<=.02)continue;const permeability=clamp(o.permeability??0,0,1),effective=progress*(1-permeability*.55),crest=Math.max(0,(WORLD.height-o.topY)*effective),first=Math.max(0,Math.floor(o.minX/this.dx)),last=Math.min(this.n-1,Math.ceil(o.maxX/this.dx));for(let i=first;i<=last;i++)this.bed[i]=Math.max(this.bed[i],crest);}
  }
  resetWater(){const sea=this.baseSeaElevation;for(let i=0;i<this.n;i++){this.h[i]=Math.max(0,sea-this.bed[i]);this.q[i]=0;this.sediment[i]=0;this.breaking[i]=0;this.foam[i]=0;this.wetDry.state[i]=this.h[i]>EPS?2:0;}this.updateDerived();this.massBalance.reset(this.totalVolume);this.momentumBalance.reset();this.energyBalance.reset();}
  velocityAtIndex(i){const h=this.h[i];return h>EPS?this.q[i]/h:0;}
@@ -42,6 +42,8 @@ export class WaterSolver{
  addWaterAtIndex(i,amount){if(i<0||i>=this.n||amount<=0)return;this.h[i]+=amount;this.massBalance.source(amount*this.dx);}
  setOffshoreBoundary(v=null){this.offshoreBoundary=v?{...v}:null;if(Number.isFinite(v?.significantWaveHeightMeters))this.significantWaveHeightMeters=v.significantWaveHeightMeters;}
  setStructuralObstacles(v=[]){this.structuralObstacles=v.map(x=>({...x}));}
+ setBuildingObstacles(v=[]){this.buildingObstacles=v.map(x=>({...x}));}
+ setDebrisObstacles(v=[]){this.debrisObstacles=v.map(x=>({...x}));}
 
  update(dt){
   this.time+=dt;this.refreshBed();const steps=this.cflController.substeps(dt,this.dx,this.h,this.q,this.g),subdt=dt/steps;

@@ -248,6 +248,7 @@ export class GameEngine {
     this.granular.update(dt);
     this.structural.update(dt);
     this.rigidBodies.update(dt, this.water, this.terrain);
+    this.water.setDebrisObstacles?.(this.rigidBodies.waterObstacles?.() || []);
     this.particles.update(dt, this.water, this.terrain);
     this.game?.postPhysicsUpdate?.(dt);
   }
@@ -459,6 +460,10 @@ export class GameEngine {
     const idx = this.terrain.index(c.x, c.y);
     const wi = clamp(Math.floor(x / this.water.dx), 0, this.water.n - 1);
     const mat = this.terrain.getMaterial(c.x, c.y);
+    const building = this.game?.inspectAt?.(x, y) || null;
+    const structuralAssembly = building
+      ? this.game?.buildingStructures?.assemblyForBuilding?.(building.id)
+      : null;
     return {
       x: Math.round(x),
       y: Math.round(y),
@@ -474,7 +479,18 @@ export class GameEngine {
       breaking: this.water.breaking[wi],
       foam: this.water.foam?.[wi] || 0,
       wetDryState: this.water.wetDry?.state?.[wi] ?? 0,
-      building: this.game?.inspectAt?.(x, y) || null,
+      building,
+      structuralAssembly: structuralAssembly ? {
+        id: structuralAssembly.id,
+        state: structuralAssembly.collapseState,
+        integrity: structuralAssembly.integrity,
+        condition: structuralAssembly.condition,
+        rotation: structuralAssembly.rotation,
+        failureMode: structuralAssembly.failureMode,
+        minimumFactor: structuralAssembly.stability?.minimumFactor ?? null,
+        blockCount: structuralAssembly.blocks?.filter?.(block => block.integrity > 0)?.length || 0,
+        fractured: structuralAssembly.fractured
+      } : null,
       construction: this.game?.inspectConstructionAt?.(x, y) || null
     };
   }
@@ -525,6 +541,8 @@ export class GameEngine {
       sediment,
       erodedCells: this.terrain.erodedCells,
       bodies: this.rigidBodies.bodies.length,
+      rigidBodyCollisions: this.rigidBodies.collisionPairs || 0,
+      debrisPiles: this.rigidBodies.sleepingCount || 0,
       particles: this.particles.items.length,
       waterDiagnostics: this.water.diagnosticSnapshot?.() || null,
       inspection: this.getInspection(),

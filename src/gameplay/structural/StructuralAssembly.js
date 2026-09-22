@@ -3,7 +3,7 @@ import { CenterOfMassSolver } from "./CenterOfMassSolver.js";
 let sequence = 1;
 
 export class StructuralAssembly {
-  constructor({ id, blocks = [], foundationIds = [], anchorIds = [], condition = 1, rotation = 0, displacementX = 0 } = {}) {
+  constructor({ id, blocks = [], foundationIds = [], anchorIds = [], condition = 1, rotation = 0, displacementX = 0, displacementY = 0, velocityX = 0, velocityY = 0 } = {}) {
     this.id = id || "assembly-" + sequence++;
     this.type = "STRUCTURAL_ASSEMBLY";
     this.blocks = blocks;
@@ -12,7 +12,10 @@ export class StructuralAssembly {
     this.condition = condition;
     this.rotation = rotation;
     this.angularVelocity = 0;
+    this.velocityX = velocityX;
+    this.velocityY = velocityY;
     this.displacementX = displacementX;
+    this.displacementY = displacementY;
     this.integrity = 1;
     this.stability = null;
     this.failed = false;
@@ -22,12 +25,18 @@ export class StructuralAssembly {
     this.totalMass = 0;
     this.baseContacts = [];
     this.waterContactArea = 0;
+    this.collapseState = "STABLE";
+    this.failureElapsed = 0;
+    this.fractured = false;
+    this.buildingId = null;
+    this.restCenter = null;
   }
 
   recalculate(grid, extraMasses = []) {
     const active = this.blocks.filter((block) => block.integrity > 0);
     const com = CenterOfMassSolver.solve(active, grid, extraMasses);
     this.centerOfMass = { x: com.x, y: com.y };
+    if (!this.restCenter) this.restCenter = { x: com.x, y: com.y };
     this.totalMass = com.totalMass;
 
     if (!active.length) {
@@ -69,9 +78,18 @@ export class StructuralAssembly {
       condition: this.condition,
       rotation: this.rotation,
       displacementX: this.displacementX,
+      displacementY: this.displacementY,
+      velocityX: this.velocityX,
+      velocityY: this.velocityY,
+      angularVelocity: this.angularVelocity,
       integrity: this.integrity,
       failed: this.failed,
       failureMode: this.failureMode,
+      collapseState: this.collapseState,
+      failureElapsed: this.failureElapsed,
+      fractured: this.fractured,
+      buildingId: this.buildingId,
+      restCenter: this.restCenter,
       stability: this.stability
     };
   }
