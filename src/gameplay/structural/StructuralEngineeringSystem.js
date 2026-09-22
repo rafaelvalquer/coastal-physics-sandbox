@@ -13,6 +13,7 @@ import { ConstructionQueue } from "../jobs/ConstructionQueue.js";
 import { ConstructionJob } from "../jobs/ConstructionJob.js";
 import { RepairJob } from "../jobs/RepairJob.js";
 import { ReinforcementJob } from "../jobs/ReinforcementJob.js";
+import { DemolitionJob } from "../jobs/DemolitionJob.js";
 import { ConstructionScheduler } from "../jobs/ConstructionScheduler.js";
 import { StructuralPlacementValidator } from "../construction/StructuralPlacementValidator.js";
 import { ConstructionPlanner } from "../construction/ConstructionPlanner.js";
@@ -70,6 +71,13 @@ export class StructuralEngineeringSystem {
     const requirements={cost:1200,materials:{CONCRETE:.8,STEEL:.03},requiredEquipment:[]};const reserve=this.inventory.reserve(job.id,requirements);if(!reserve.ok)return reserve;job.blueprint.requirements=requirements;this.queue.add(job);return {ok:true,job};
   }
 
+  scheduleDemolition(assemblyId,{priority="NORMAL",workers=3}={}){
+    const assembly=this.assemblies.get(assemblyId);if(!assembly)return {ok:false,reason:"Estrutura não encontrada"};
+    const job=new DemolitionJob({targetId:assemblyId,blueprint:{targetId:assemblyId},laborHours:Math.max(1,assembly.blocks.length*.18),workersRequired:3,desiredWorkers:workers,priority});
+    const reserve=this.inventory.reserve(job.id,{cost:Math.max(120,assembly.blocks.length*15),materials:{},requiredEquipment:[]});if(!reserve.ok)return reserve;
+    this.queue.add(job);return {ok:true,job};
+  }
+
   scheduleReinforcement(assemblyId,type,position,options={}){
     this.planner.select(type,"FOUNDATION",options.priority||"HIGH");
     const result=this.planner.plan(position,{priority:options.priority||"HIGH",desiredWorkers:options.workers});
@@ -97,6 +105,14 @@ export class StructuralEngineeringSystem {
     if(job.blueprint?.blockId){const b=this.blocks.get(job.blueprint.blockId);if(b){b.progress=1;b.constructionState="COMPLETED";this.eventBus?.emit("structural:block-completed",{block:b});}}
     if(job.blueprint?.foundationId){const e=this.foundation.elements.get(job.blueprint.foundationId);if(e){e.progress=1;e.constructionState="COMPLETED";this.eventBus?.emit("foundation:completed",{foundation:e,job});}}
     if(job.type==="REPAIR"){const a=this.assemblies.get(job.targetId);if(a){a.condition=Math.min(1,a.condition+(job.restoreAmount||.25));a.failed=false;a.failureMode=null;for(const b of a.blocks)b.integrity=Math.min(1,b.integrity+.2);}}
+    if(job.type==="DEMOLISH"){
+      const a=this.assemblies.get(job.targetId);
+      if(a){
+        for(const b of a.blocks){this.grid.releaseBlock(b.id);this.graph.removeForBlock(b.id);this.blocks.delete(b.id);}
+        for(const e of this.foundation.forAssembly(a.id)){this.grid.releaseFoundation(e.id);this.foundation.elements.delete(e.id);}
+        this.assemblies.delete(a.id);
+      }
+    }
     this.rebuildNeeded=true;
   }
 
