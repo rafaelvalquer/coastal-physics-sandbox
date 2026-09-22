@@ -388,9 +388,9 @@ export class Game {
       if (this.tutorial.current === "OPEN_FORECAST") this.tutorial.complete();
       return { ok: true };
     });
-    this.commandBus.register("structural:select", ({ type, category = null }) => {
+    this.commandBus.register("structural:select", ({ type, category = null, priority = "NORMAL" }) => {
       this.clearConstruction();
-      this.structuralEngineering.planner.select(type, category);
+      this.structuralEngineering.planner.select(type, category, priority);
       this.state.selectedConstruction = null;
       return { ok: true, type };
     });
