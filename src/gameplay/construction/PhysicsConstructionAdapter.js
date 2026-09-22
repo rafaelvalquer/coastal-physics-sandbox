@@ -187,7 +187,8 @@ export class PhysicsConstructionAdapter {
       moved += removal;
       water.h[source] -= removal;
 
-      const outlet = Math.max(0, source - 24);
+      let outlet = Math.max(0, source - 8);
+      while (outlet > 0 && water.bed[outlet] >= water.baseSeaElevation - 2) outlet--;
       water.h[outlet] += removal * 0.97;
       water.sediment[outlet] += water.sediment[source] * 0.001 * removal;
     }
@@ -219,6 +220,12 @@ export class PhysicsConstructionAdapter {
       water.q[index] *= damping;
       if (index + 1 < water.n) water.q[index + 1] *= Math.sqrt(damping);
       if (index > 0) water.q[index - 1] *= Math.sqrt(damping);
+
+      const waves = this.engine.surfaceWaves;
+      if (waves) {
+        waves.velocity[index] *= damping;
+        waves.displacement[index] *= 0.995 + 0.005 * damping;
+      }
     }
   }
 
