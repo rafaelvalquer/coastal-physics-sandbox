@@ -264,6 +264,12 @@ export class GameEngine {
             const wi = clamp(Math.floor(((cx + 0.5) * this.terrain.cellSize) / this.water.dx), 0, this.water.n - 1);
             if (old.key === 'SAND' || old.key === 'SOIL' || old.key === 'CLAY') this.water.sediment[wi] += 0.12;
           }
+        } else if (this.tool === TOOLS.COMPACT) {
+          const mat = this.terrain.getMaterial(cx, cy);
+          if (mat.solid) {
+            this.terrain.integrity[idx] = Math.min(1, (this.terrain.integrity[idx] || 0) + 0.08);
+            this.terrain.moisture[idx] = Math.max(0, (this.terrain.moisture[idx] || 0) - 0.035);
+          }
         } else {
           const mat = materialByTool[this.tool];
           if (mat && this.terrain.material[idx] === MATERIALS.AIR.id) {
