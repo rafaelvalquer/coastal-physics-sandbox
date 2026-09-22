@@ -335,6 +335,10 @@ export class Game {
   }
 
   bindCommands() {
+    this.commandBus.register("ui:forecast-opened", () => {
+      if (this.tutorial.current === "OPEN_FORECAST") this.tutorial.complete();
+      return { ok: true };
+    });
     this.commandBus.register("construction:select", ({ type, length = 20 }) => {
       this.selectConstruction(type, length);
       return { ok: true };
