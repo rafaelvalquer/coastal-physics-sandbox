@@ -1,0 +1,1 @@
+import { compareMetrics } from "./ComparisonMetrics.js";export class RunComparison{static compare(a,b){if(!a||!b)return null;return {a:{id:a.id,name:a.experimentName,metrics:a.metrics},b:{id:b.id,name:b.experimentName,metrics:b.metrics},metrics:compareMetrics(a.metrics,b.metrics)};}}

@@ -1,0 +1,1 @@
+export class ExperimentSnapshot{constructor({experiment,state,elapsedMinutes=0,metrics=null,result=null}={}){this.experiment=experiment;this.state=state;this.elapsedMinutes=elapsedMinutes;this.metrics=metrics;this.result=result;this.createdAt=Date.now();}}

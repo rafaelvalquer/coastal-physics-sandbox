@@ -51,7 +51,7 @@ export class PhysicsConstructionAdapter {
         continue;
       }
 
-      if (construction.type === "DRAINAGE") {
+      if (construction.type === "DRAINAGE" || construction.type === "PUMP") {
         const waterIndex = Math.max(
           0,
           Math.min(this.engine.water.n - 1, Math.floor(worldX / this.engine.water.dx))
@@ -66,6 +66,12 @@ export class PhysicsConstructionAdapter {
       if (construction.type === "CONCRETE_WALL") {
         material = MATERIALS.CONCRETE;
         heightCells = Math.max(2, Math.round(construction.height * 0.7));
+      } else if (construction.type === "TEMP_BARRIER") {
+        material = MATERIALS.CONCRETE;
+        heightCells = 2;
+      } else if (construction.type === "SANDBAG") {
+        material = MATERIALS.SAND;
+        heightCells = 1;
       } else if (construction.type === "RIPRAP") {
         material = MATERIALS.ROCK;
         heightCells = 2;
@@ -283,7 +289,7 @@ export class PhysicsConstructionAdapter {
       if (!construction.operational) continue;
       this.updateFoundationExposure(construction);
       if (construction.type === "VEGETATION") this.updateVegetation(construction, dt);
-      if (construction.type === "DRAINAGE") this.updateDrainage(construction, dt);
+      if (construction.type === "DRAINAGE" || construction.type === "PUMP") this.updateDrainage(construction, dt);
       if (construction.type === "DUNE") this.updateDuneCondition(construction);
       this.updateHydraulicDissipation(construction, dt);
       this.updateWaveWear(construction, dt);

@@ -29,5 +29,20 @@ export const CONSTRUCTION_TYPES={
     costPerMeter:2500,height:5,width:10,mass:3000,strength:1.2,
     reflectionCoefficient:.45,permeability:.25,dissipation:.8,
     maintenance:.015,waterOnly:true,roughness:.8,resistance:1.1
+  },
+  SANDBAG:{
+    costPerMeter:180,height:1.2,width:3,mass:240,strength:.3,
+    reflectionCoefficient:.12,permeability:.18,dissipation:.35,
+    maintenance:.02,landOnly:true
+  },
+  TEMP_BARRIER:{
+    costPerMeter:650,height:2.2,width:2,mass:420,strength:.65,
+    reflectionCoefficient:.48,permeability:.05,dissipation:.18,
+    maintenance:.02,landOnly:true
+  },
+  PUMP:{
+    costPerMeter:1100,height:.3,width:2,mass:120,strength:.5,
+    reflectionCoefficient:0,permeability:1,dissipation:0,
+    maintenance:.02,landOnly:true,capacity:5
   }
 };

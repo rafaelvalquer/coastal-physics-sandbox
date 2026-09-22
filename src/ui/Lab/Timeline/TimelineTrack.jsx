@@ -1,0 +1,2 @@
+function height(v,max){return Math.max(4,Math.min(100,(Number(v)||0)/max*100));}
+export function TimelineTrack({frames,duration,field,max,label}){return <div className="timeline-track"><span>{label}</span><div className="timeline-track-bars">{frames.map((f,i)=><i key={i} style={{left:(f.time/Math.max(1,duration*60)*100)+"%",height:height(f[field],max)+"%"}} title={Number(f[field]).toFixed(1)}/>)}</div></div>;}

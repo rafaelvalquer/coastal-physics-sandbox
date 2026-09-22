@@ -5,7 +5,7 @@ export class ConstructionRenderer {
       ctx.save();
       ctx.translate(construction.x, construction.y);
 
-      if (construction.type === "CONCRETE_WALL") {
+      if (construction.type === "CONCRETE_WALL" || construction.type === "TEMP_BARRIER") {
         ctx.fillStyle = "#aab4b9";
         ctx.fillRect(-width / 2, -10, width, 10);
       } else if (construction.type === "RIPRAP" || construction.type === "BREAKWATER") {
@@ -15,6 +15,9 @@ export class ConstructionRenderer {
           ctx.arc(x, -4 - Math.abs((x / 10) % 2) * 3, 6, 0, Math.PI * 2);
           ctx.fill();
         }
+      } else if (construction.type === "SANDBAG") {
+        ctx.fillStyle = "#b99b63";
+        for (let x = -width / 2; x < width / 2; x += 8) ctx.fillRect(x, -7, 7, 6);
       } else if (construction.type === "DUNE") {
         ctx.fillStyle = "#d8b66a";
         ctx.beginPath();
@@ -29,7 +32,7 @@ export class ConstructionRenderer {
           ctx.lineTo(x + 2, -9);
           ctx.stroke();
         }
-      } else if (construction.type === "DRAINAGE") {
+      } else if (construction.type === "DRAINAGE" || construction.type === "PUMP") {
         ctx.strokeStyle = "#577d8d";
         ctx.lineWidth = 3;
         ctx.beginPath();
