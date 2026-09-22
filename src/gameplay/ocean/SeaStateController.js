@@ -35,8 +35,9 @@ export class SeaStateController {
     if (!active) {
       if (next) {
         const hours = (new Date(next.startDate) - this.clock.getDate()) / 36e5;
-        if (hours <= 72) {
-          return { phase: "FORECAST", progress: Math.max(0, 1 - hours / 72), hoursToPeak: hours + (next.approachDuration || 0) };
+        const lead = this.weatherDirector.forecastLeadHours || 48;
+        if (hours <= lead) {
+          return { phase: "FORECAST", progress: Math.max(0, 1 - hours / lead), hoursToPeak: hours + (next.approachDuration || 0) };
         }
       }
       return { phase: "CALM", progress: 0, hoursToPeak: null };
