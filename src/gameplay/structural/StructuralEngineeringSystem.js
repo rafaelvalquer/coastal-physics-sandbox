@@ -1,6 +1,7 @@
 import { StructuralGrid } from "./StructuralGrid.js";
 import { StructuralBlock } from "./StructuralBlock.js";
 import { AssemblyGraph } from "./AssemblyGraph.js";
+import { BlockConnectionSystem } from "./BlockConnectionSystem.js";
 import { AssemblyBuilder } from "./AssemblyBuilder.js";
 import { StructuralAssembly } from "./StructuralAssembly.js";
 import { StabilitySolver } from "./StabilitySolver.js";
@@ -23,6 +24,7 @@ export class StructuralEngineeringSystem {
     this.inventory=new ResourceInventory({budget});
     this.workforce=new WorkforceManager({population,eventBus,targetMunicipalWorkers:24});
     this.foundation=new StructuralFoundationSystem({terrain:engine.terrain,water:engine.water,grid:this.grid,eventBus});
+    this.connectionSystem=new BlockConnectionSystem({graph:this.graph,grid:this.grid,blocks:this.blocks});
     this.builder=new AssemblyBuilder({grid:this.grid,graph:this.graph});
     this.stability=new StabilitySolver({water:engine.water,foundation:this.foundation});
     this.failure=new StructuralFailureSystem({eventBus,rigidBodies:engine.rigidBodies});
@@ -53,7 +55,7 @@ export class StructuralEngineeringSystem {
       const block=new StructuralBlock({type:blueprint.type,gridX:blueprint.gridX,gridY:blueprint.gridY,constructionState:"PLANNED",progress:0});
       if(!this.grid.occupyBlock(block)){this.inventory.cancel(job.id);return {ok:false,reason:"Célula ocupada"};}
       job.blueprint.blockId=block.id;this.blocks.set(block.id,block);
-      for(const neighbor of this.adjacentBlocks(block))this.graph.connect(block.id,neighbor.id,this.connectionType(block,neighbor));
+      this.connectionSystem.connectBlock(block);
       this.rebuildAssemblies();
     } else if(blueprint.kind==="FOUNDATION"){
       const element=this.foundation.create({type:blueprint.type,x:blueprint.position.x,y:blueprint.position.y,assemblyId:blueprint.targetAssemblyId});
@@ -69,7 +71,19 @@ export class StructuralEngineeringSystem {
   }
 
   scheduleReinforcement(assemblyId,type,position,options={}){
-    this.planner.select(type,"FOUNDATION");const result=this.planner.plan(position,{priority:options.priority||"HIGH",desiredWorkers:options.workers});this.planner.clear();return result;
+    this.planner.select(type,"FOUNDATION",options.priority||"HIGH");
+    const result=this.planner.plan(position,{priority:options.priority||"HIGH",desiredWorkers:options.workers});
+    this.planner.clear();
+    if(result.ok&&result.job){result.job.type="REINFORCE";result.job.targetAssemblyId=assemblyId;result.job.blueprint.targetAssemblyId=assemblyId;}
+    return result;
+  }
+
+  cancelJob(jobId){
+    const job=this.queue.get(jobId);if(!job)return false;
+    const ok=this.scheduler.cancel(jobId);if(!ok)return false;
+    if(job.blueprint?.blockId){const block=this.blocks.get(job.blueprint.blockId);if(block){this.grid.releaseBlock(block.id);this.graph.removeForBlock(block.id);this.blocks.delete(block.id);}}
+    if(job.blueprint?.foundationId){const id=job.blueprint.foundationId;this.grid.releaseFoundation(id);this.foundation.elements.delete(id);}
+    this.rebuildAssemblies();return true;
   }
 
   onProgress(job){
@@ -81,7 +95,7 @@ export class StructuralEngineeringSystem {
 
   onComplete(job){
     if(job.blueprint?.blockId){const b=this.blocks.get(job.blueprint.blockId);if(b){b.progress=1;b.constructionState="COMPLETED";this.eventBus?.emit("structural:block-completed",{block:b});}}
-    if(job.blueprint?.foundationId){const e=this.foundation.elements.get(job.blueprint.foundationId);if(e){e.progress=1;e.constructionState="COMPLETED";}}
+    if(job.blueprint?.foundationId){const e=this.foundation.elements.get(job.blueprint.foundationId);if(e){e.progress=1;e.constructionState="COMPLETED";this.eventBus?.emit("foundation:completed",{foundation:e,job});}}
     if(job.type==="REPAIR"){const a=this.assemblies.get(job.targetId);if(a){a.condition=Math.min(1,a.condition+(job.restoreAmount||.25));a.failed=false;a.failureMode=null;for(const b of a.blocks)b.integrity=Math.min(1,b.integrity+.2);}}
     this.rebuildNeeded=true;
   }
@@ -99,8 +113,39 @@ export class StructuralEngineeringSystem {
   }
 
   syncWaterObstacles(){
-    const obstacles=[];for(const a of this.assemblies.values()){if(!a.bounds||a.failed&&a.condition<.2)continue;const progress=a.blocks.reduce((s,b)=>s+(b.progress??1),0)/Math.max(1,a.blocks.length);const permeability=a.blocks.reduce((s,b)=>s+(b.permeability??.05),0)/Math.max(1,a.blocks.length);obstacles.push({id:a.id,minX:a.bounds.minX,maxX:a.bounds.maxX,crestElevation:this.engine.water.baseSeaElevation+Math.max(0,(this.engine.water.baseSeaElevation-(720-a.bounds.minY)))*0,topY:a.bounds.minY,progress,permeability});}
+    const obstacles=[];
+    for(const a of this.assemblies.values()){
+      if(!a.bounds||(a.failed&&a.condition<.2))continue;
+      const hydraulicBlocks=a.blocks.filter(b=>b.type!=="PORTABLE_PUMP");
+      if(!hydraulicBlocks.length)continue;
+      const progress=hydraulicBlocks.reduce((s,b)=>s+(b.progress??1),0)/hydraulicBlocks.length;
+      const permeability=hydraulicBlocks.reduce((s,b)=>s+(b.permeability??.05),0)/hydraulicBlocks.length;
+      obstacles.push({id:a.id,minX:a.bounds.minX,maxX:a.bounds.maxX,topY:a.bounds.minY,progress,permeability});
+    }
     this.engine.water.setStructuralObstacles?.(obstacles);
+  }
+
+  updatePumps(dt){
+    const water=this.engine.water;
+    for(const block of this.blocks.values()){
+      if(block.type!=="PORTABLE_PUMP"||block.progress<1||block.integrity<=0)continue;
+      const p=block.worldCenter(this.grid),i=Math.max(0,Math.min(water.n-1,Math.floor(p.x/water.dx)));
+      if(water.h[i]<=.05)continue;
+      const capacity=(block.pumpCapacity||1.6)*48*dt*.18;
+      const removed=Math.min(water.h[i],capacity);water.h[i]-=removed;
+      water.h[Math.max(0,i-30)]+=removed*.96;
+    }
+  }
+
+  fractureAssembly(a){
+    const candidates=a.blocks.filter(b=>b.gridY<Math.max(...a.blocks.map(x=>x.gridY)));
+    const detached=candidates.filter((b,index)=>index%2===0).slice(0,Math.max(1,Math.ceil(candidates.length*.35)));
+    for(const block of detached){
+      const p=block.worldCenter(this.grid);
+      this.engine.rigidBodies?.spawn?.(p.x,p.y,block.width*48,block.height*48,block.density||2200,block.type==="GABION"?"rock":"concrete");
+      this.grid.releaseBlock(block.id);this.graph.removeForBlock(block.id);this.blocks.delete(block.id);
+    }
+    if(detached.length)this.rebuildNeeded=true;
   }
 
   estimateBlockPlacement(type,check){
@@ -112,7 +157,15 @@ export class StructuralEngineeringSystem {
   update(dt,clock){
     const gameHours=dt*(clock?.minutesPerRealSecond||30)/60;this.scheduler.update(gameHours);this.foundation.update(dt);if(this.rebuildNeeded)this.rebuildAssemblies();
     this.accumulator+=dt;if(this.accumulator<.08)return;const elapsed=this.accumulator;this.accumulator=0;
-    for(const a of this.assemblies.values()){a.recalculate(this.grid,this.foundation.extraMassesForAssembly(a));this.stability.solve(a);this.failure.update(a,elapsed);}
+    for(const a of this.assemblies.values()){
+      a.recalculate(this.grid,this.foundation.extraMassesForAssembly(a));
+      this.stability.solve(a);
+      const wasFailed=a.failed;
+      this.failure.update(a,elapsed);
+      if(!wasFailed&&a.failed)this.fractureAssembly(a);
+    }
+    if(this.rebuildNeeded)this.rebuildAssemblies();
+    this.updatePumps(elapsed);
     this.syncWaterObstacles();
   }
 
