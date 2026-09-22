@@ -37,6 +37,25 @@ export const STRUCTURAL_BLOCKS = {
     materials: { CONCRETE: 1.25, STEEL: 0.08 },
     requiredEquipment: []
   },
+  PRECAST_WALL: {
+    id: "PRECAST_WALL",
+    family: "STRUCTURE",
+    label: "Parede pré-moldada",
+    width: 0.5,
+    height: 1,
+    thickness: 1,
+    density: 2350,
+    friction: 0.7,
+    compressiveStrength: 32,
+    permeability: 0.01,
+    dissipation: 0.1,
+    materialCost: 360,
+    moneyCost: 420,
+    workersRequired: 3,
+    laborHours: 0.75,
+    materials: { CONCRETE: 0.95, STEEL: 0.05 },
+    requiredEquipment: []
+  },
   GABION: {
     id: "GABION",
     family: "STRUCTURE",
@@ -114,6 +133,25 @@ export const STRUCTURAL_BLOCKS = {
     laborHours: 0.08,
     materials: { SAND: 0.06, GEOTEXTILE: 0.5 },
     requiredEquipment: []
+  },
+  PORTABLE_PUMP: {
+    id: "PORTABLE_PUMP",
+    family: "WATER",
+    label: "Bomba portátil",
+    width: 0.5,
+    height: 0.5,
+    thickness: 0.5,
+    density: 700,
+    friction: 0.65,
+    permeability: 1,
+    dissipation: 0,
+    pumpCapacity: 1.6,
+    materialCost: 450,
+    moneyCost: 600,
+    workersRequired: 2,
+    laborHours: 0.25,
+    materials: { STEEL: 0.04, GEOTEXTILE: 0.5 },
+    requiredEquipment: ["PORTABLE_PUMP"]
   },
   TEMP_BARRIER: {
     id: "TEMP_BARRIER",
