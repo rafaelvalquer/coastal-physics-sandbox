@@ -403,7 +403,7 @@ export class Game {
   scheduleOnboardingStorm() {
     if (this.scenario.id !== "porto-esperanca") return;
     const date = new Date(this.clock.startDate);
-    date.setUTCDate(date.getUTCDate() + 2);
+    date.setUTCHours(date.getUTCHours() + 60);
     this.weather.schedule(date, {
       name: "Primeira Ressaca",
       targetWaveHeight: 2.8,
