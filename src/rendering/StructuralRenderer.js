@@ -1,4 +1,4 @@
-const COLORS={CONCRETE_BLOCK:"#aeb8bd",FOUNDATION_BLOCK:"#8f9aa0",GABION:"#7e827a",ROCK_UNIT:"#6e6b64",TETRAPOD:"#737b80",SANDBAG:"#b99b63",TEMP_BARRIER:"#789aa4"};
+const COLORS={CONCRETE_BLOCK:"#aeb8bd",FOUNDATION_BLOCK:"#8f9aa0",PRECAST_WALL:"#a4b3ba",GABION:"#7e827a",ROCK_UNIT:"#6e6b64",TETRAPOD:"#737b80",SANDBAG:"#b99b63",TEMP_BARRIER:"#789aa4",PORTABLE_PUMP:"#5e8ea3"};
 export class StructuralRenderer {
   draw(ctx,system){
     if(!system)return;
