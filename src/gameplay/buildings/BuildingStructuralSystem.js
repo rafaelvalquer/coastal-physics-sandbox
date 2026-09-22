@@ -119,7 +119,7 @@ export class BuildingStructuralSystem{
   const building=this.buildingManager.get(buildingId),assembly=this.assemblyForBuilding(buildingId);if(!building||!assembly||assembly.fractured)return;
   const normalized=Math.max(0,Number(damage)||0)/Math.max(1,building.maxIntegrity);
   for(const block of assembly.blocks){
-    const vulnerability=block.type==="ROOF_PANEL"?1.35:block.type==="WOOD_FRAME"?1.2:block.type==="LIGHT_FOOTING"?.55:.85;
+    const vulnerability=block.type==="ROOF_PANEL"?1.35:block.type==="WOOD_FRAME"?1.2:block.type==="LIGHT_FOOTING"?0.55:0.85;
     block.integrity=Math.max(.02,block.integrity-normalized*vulnerability);
   }
   const ids=new Set(assembly.blocks.map(b=>b.id));
