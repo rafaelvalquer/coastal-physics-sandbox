@@ -93,7 +93,7 @@ export class TerrainGrid {
     return { x: col, y: this.columnTopCell(col) };
   }
 
-  generateIsland() {
+  generateIsland(seed = 814) {
     this.material.fill(MATERIALS.AIR.id);
     this.integrity.fill(0);
     this.moisture.fill(0);
@@ -103,7 +103,10 @@ export class TerrainGrid {
     for (let x = 0; x < this.cols; x++) {
       const nx = x / (this.cols - 1);
       const worldX = x * this.cellSize;
-      const noise = smoothNoise1D(nx * 7.5, 814) * 10 + smoothNoise1D(nx * 19, 91) * 4;
+      const primarySeed = Number(seed) || 814;
+      const secondarySeed = primarySeed === 814 ? 91 : primarySeed + 7919;
+      const terraceSeed = primarySeed === 814 ? 1201 : primarySeed + 1543;
+      const noise = smoothNoise1D(nx * 7.5, primarySeed) * 10 + smoothNoise1D(nx * 19, secondarySeed) * 4;
 
       // Porto Esperança is shaped as an explicit coastal-defense cross section:
       // ocean -> beach -> low district -> center -> critical infrastructure -> safe hill.
@@ -120,7 +123,7 @@ export class TerrainGrid {
       // Slight terrace shaping makes flood progression readable without creating
       // artificial barriers: the hydraulic solver still uses the real bed.
       if (worldX >= 620 && worldX < 780) {
-        topY += 10 * smoothNoise1D(nx * 5.2, 1201);
+        topY += 10 * smoothNoise1D(nx * 5.2, terraceSeed);
       } else if (worldX >= 780 && worldX < 1010) {
         topY -= 8;
       }
