@@ -371,6 +371,23 @@ export class Game {
       if (ok) this.state.pushMessage("Energia priorizada para " + buildingId + ".", "success", { entityId: buildingId });
       return { ok, nodeId };
     });
+    this.commandBus.register("construction:repair", ({ id, amount = 0.25, cost = 1200 }) => {
+      const construction = this.constructions.list().find((item) => item.id === id);
+      if (!construction) return { ok: false, reason: "Defesa não encontrada" };
+      if (!this.economy.budget.spend(cost, "REPAIR", id)) {
+        return { ok: false, reason: "Orçamento insuficiente" };
+      }
+      construction.condition = Math.min(1, construction.condition + Math.max(0, amount));
+      construction.operational = construction.condition > 0.05;
+      construction.foundationExposure = Math.max(0, construction.foundationExposure - amount * 0.15);
+      this.state.pushMessage("Defesa reparada: " + id, "success", {
+        entityId: id,
+        x: construction.x,
+        y: construction.y
+      });
+      if (this.tutorial.current === "REPAIR") this.tutorial.complete();
+      return { ok: true, construction };
+    });
     this.commandBus.register("building:repair", ({ id, amount = 25, cost = 1500 }) => {
       const building = this.buildings.get(id);
       if (!building) return { ok: false, reason: "Prédio não encontrado" };
@@ -632,7 +649,9 @@ export class Game {
         completed: this.tutorial.completed
       },
       selectedConstruction: this.state.selectedConstruction,
-      selectedInspection: this.state.selectedInspection,
+      selectedInspection: this.state.selectedInspection
+        ? this.engine.inspectWorld?.(this.state.selectedInspection.x, this.state.selectedInspection.y) || this.state.selectedInspection
+        : null,
       constructionPreview: this.state.selectedConstruction && this.engine.pointer?.inside
         ? this.constructionTool.inspect({ x: this.engine.pointer.x, y: this.engine.pointer.y })
         : null,
