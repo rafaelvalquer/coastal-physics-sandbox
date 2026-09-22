@@ -1,4 +1,5 @@
 export const MATERIAL_UNITS={CONCRETE:"t",ROCK:"t",STEEL:"t",GRAVEL:"t",SAND:"t",GEOTEXTILE:"m²"};
+export const MATERIAL_PRICES={CONCRETE:180,ROCK:95,STEEL:1250,GRAVEL:70,SAND:45,GEOTEXTILE:12};
 export class MaterialStockpile {
   constructor(initial={}){this.stock={CONCRETE:18,ROCK:32,STEEL:4,GRAVEL:18,SAND:24,GEOTEXTILE:120,...initial};this.reserved=new Map();}
   available(material){const reserved=[...this.reserved.values()].reduce((s,r)=>s+Number(r[material]||0),0);return Math.max(0,Number(this.stock[material]||0)-reserved);}
