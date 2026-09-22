@@ -43,6 +43,7 @@ export class BuildingStructuralSystem{
  rebuildAll(){
   this.clear();
   for(const building of this.buildingManager.list())this.ensureAssembly(building);
+  this.syncWaterObstacles();
  }
 
  addBlock({building,type,gridX,gridY}){
@@ -138,6 +139,16 @@ export class BuildingStructuralSystem{
   this.eventBus?.emit("building:structural-collapse",{buildingId,assemblyId:building.structuralAssemblyId,position:{x:building.x,y:building.y}});
  }
 
+ syncWaterObstacles(){
+  const obstacles=[];
+  for(const assembly of this.assemblies.values()){
+   if(!assembly.bounds||assembly.fractured)continue;
+   const permeability=assembly.blocks.length?assembly.blocks.reduce((s,b)=>s+(b.permeability??0.04),0)/assembly.blocks.length:0.04;
+   obstacles.push({id:assembly.id,minX:assembly.bounds.minX,maxX:assembly.bounds.maxX,topY:assembly.bounds.minY,progress:Math.max(0.05,assembly.condition),permeability:Math.min(0.45,permeability)});
+  }
+  this.engine.water.setBuildingObstacles?.(obstacles);
+ }
+
  update(dt){
   this.foundation.update(dt);
   for(const assembly of this.assemblies.values()){
@@ -157,6 +168,7 @@ export class BuildingStructuralSystem{
       if(structuralRatio<building.integrityRatio)building.integrity=Math.max(0,building.maxIntegrity*structuralRatio);
     }
   }
+  this.syncWaterObstacles();
  }
 
  serialize(){
