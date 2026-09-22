@@ -14,6 +14,8 @@ import { ConstructionJob } from "../jobs/ConstructionJob.js";
 import { RepairJob } from "../jobs/RepairJob.js";
 import { ReinforcementJob } from "../jobs/ReinforcementJob.js";
 import { DemolitionJob } from "../jobs/DemolitionJob.js";
+import { ExcavationJob } from "../jobs/ExcavationJob.js";
+import { MATERIALS } from "../../engine/world/materials.js";
 import { ConstructionScheduler } from "../jobs/ConstructionScheduler.js";
 import { StructuralPlacementValidator } from "../construction/StructuralPlacementValidator.js";
 import { ConstructionPlanner } from "../construction/ConstructionPlanner.js";
@@ -33,7 +35,7 @@ export class StructuralEngineeringSystem {
     this.scheduler=new ConstructionScheduler({queue:this.queue,workforce:this.workforce,inventory:this.inventory,eventBus,onProgress:(job)=>this.onProgress(job),onComplete:(job)=>this.onComplete(job)});
     this.validator=new StructuralPlacementValidator({grid:this.grid,terrain:engine.terrain,buildings,inventory:this.inventory,structuralSystem:this});
     this.planner=new ConstructionPlanner({validator:this.validator,structuralSystem:this});
-    this.accumulator=0;this.rebuildNeeded=false;
+    this.accumulator=0;this.rebuildNeeded=false;this.selectedAction=null;
   }
 
   findNearestAssembly(x,y,radius=64){let best=null,bestD=radius;for(const a of this.assemblies.values()){if(!a.bounds)continue;const cx=(a.bounds.minX+a.bounds.maxX)/2,cy=(a.bounds.minY+a.bounds.maxY)/2,d=Math.hypot(cx-x,cy-y);if(d<bestD){best=a;bestD=d;}}return best;}
@@ -71,6 +73,37 @@ export class StructuralEngineeringSystem {
     const requirements={cost:1200,materials:{CONCRETE:.8,STEEL:.03},requiredEquipment:[]};const reserve=this.inventory.reserve(job.id,requirements);if(!reserve.ok)return reserve;job.blueprint.requirements=requirements;this.queue.add(job);return {ok:true,job};
   }
 
+  selectAction(type){this.planner.clear();this.selectedAction=type;}
+  clearAction(){this.selectedAction=null;}
+
+  scheduleTerrainJob(type,position,{priority="NORMAL",workers=3,radius=1}={}){
+    const snapped=this.grid.snapWorld(position.x,position.y);
+    let job;
+    if(type==="EXCAVATE"){
+      job=new ExcavationJob({blueprint:{type,position:{x:snapped.x,y:snapped.y},radius},position:{x:snapped.x,y:snapped.y},radius,laborHours:.65,workersRequired:3,desiredWorkers:workers,priority});
+    }else{
+      job=new ConstructionJob({type:"COMPACT",blueprint:{type:"COMPACT",position:{x:snapped.x,y:snapped.y},radius},laborHours:.45,workersRequired:2,desiredWorkers:workers,priority});
+    }
+    const req={cost:type==="EXCAVATE"?140:90,materials:{},requiredEquipment:type==="EXCAVATE"?["EXCAVATOR"]:[]};
+    const reserve=this.inventory.reserve(job.id,req);if(!reserve.ok)return reserve;
+    job.blueprint.requirements=req;this.queue.add(job);this.eventBus?.emit("job:planned",{job});return {ok:true,job};
+  }
+
+  applyTerrainJob(job){
+    const pos=job.blueprint?.position;if(!pos)return;const center=this.engine.terrain.worldToCell(pos.x,pos.y),radius=Math.max(1,job.blueprint?.radius||1);
+    for(let dy=-radius;dy<=radius;dy++)for(let dx=-radius;dx<=radius;dx++){
+      if(dx*dx+dy*dy>radius*radius)continue;const x=center.x+dx,y=center.y+dy;if(!this.engine.terrain.inBounds(x,y))continue;
+      const idx=this.engine.terrain.index(x,y);
+      if(job.type==="EXCAVATE"){
+        const old=this.engine.terrain.getMaterial(x,y);if(old.solid){this.engine.terrain.setCell(x,y,MATERIALS.AIR.id,0,0);const wi=Math.max(0,Math.min(this.engine.water.n-1,Math.floor(((x+.5)*this.engine.terrain.cellSize)/this.engine.water.dx)));if(["SAND","SOIL","CLAY"].includes(old.key))this.engine.water.sediment[wi]+=.12;}
+      }else if(job.type==="COMPACT"){
+        const mat=this.engine.terrain.getMaterial(x,y);if(mat.solid){this.engine.terrain.integrity[idx]=Math.min(1,(this.engine.terrain.integrity[idx]||0)+.15);this.engine.terrain.moisture[idx]=Math.max(0,(this.engine.terrain.moisture[idx]||0)-.08);}
+      }
+    }
+    this.engine.water.refreshBed();
+    if(job.type==="EXCAVATE")this.eventBus?.emit("terrain:excavated",{x:pos.x,y:pos.y,jobId:job.id});
+  }
+
   scheduleDemolition(assemblyId,{priority="NORMAL",workers=3}={}){
     const assembly=this.assemblies.get(assemblyId);if(!assembly)return {ok:false,reason:"Estrutura não encontrada"};
     const job=new DemolitionJob({targetId:assemblyId,blueprint:{targetId:assemblyId},laborHours:Math.max(1,assembly.blocks.length*.18),workersRequired:3,desiredWorkers:workers,priority});
@@ -105,6 +138,7 @@ export class StructuralEngineeringSystem {
     if(job.blueprint?.blockId){const b=this.blocks.get(job.blueprint.blockId);if(b){b.progress=1;b.constructionState="COMPLETED";this.eventBus?.emit("structural:block-completed",{block:b});}}
     if(job.blueprint?.foundationId){const e=this.foundation.elements.get(job.blueprint.foundationId);if(e){e.progress=1;e.constructionState="COMPLETED";this.eventBus?.emit("foundation:completed",{foundation:e,job});}}
     if(job.type==="REPAIR"){const a=this.assemblies.get(job.targetId);if(a){a.condition=Math.min(1,a.condition+(job.restoreAmount||.25));a.failed=false;a.failureMode=null;for(const b of a.blocks)b.integrity=Math.min(1,b.integrity+.2);}}
+    if(job.type==="EXCAVATE"||job.type==="COMPACT")this.applyTerrainJob(job);
     if(job.type==="DEMOLISH"){
       const a=this.assemblies.get(job.targetId);
       if(a){
@@ -236,7 +270,7 @@ export class StructuralEngineeringSystem {
     workforce.maintenance=jobs.filter(j=>j.type==="REPAIR"&&!["COMPLETED","CANCELLED","FAILED"].includes(j.state)).reduce((s,j)=>s+(j.assignedWorkers||0),0);
     workforce.emergency=jobs.filter(j=>j.priority==="EMERGENCY"&&!["COMPLETED","CANCELLED","FAILED"].includes(j.state)).reduce((s,j)=>s+(j.assignedWorkers||0),0);
     workforce.construction=jobs.filter(j=>j.type!=="REPAIR"&&j.priority!=="EMERGENCY"&&!["COMPLETED","CANCELLED","FAILED"].includes(j.state)).reduce((s,j)=>s+(j.assignedWorkers||0),0);
-    return {blocks:[...this.blocks.values()].map(b=>b.serialize()),assemblies:[...this.assemblies.values()].map(a=>this.assemblySnapshot(a)),foundations:this.foundation.serialize(),workforce,jobs,resources:this.inventory.snapshot(),selectedTool:this.planner.selectedType};
+    return {blocks:[...this.blocks.values()].map(b=>b.serialize()),assemblies:[...this.assemblies.values()].map(a=>this.assemblySnapshot(a)),foundations:this.foundation.serialize(),workforce,jobs,resources:this.inventory.snapshot(),selectedTool:this.planner.selectedType,selectedAction:this.selectedAction};
   }
 
   serialize(){return {grid:this.grid.serialize(),blocks:[...this.blocks.values()].map(b=>b.serialize()),graph:this.graph.serialize(),assemblies:[...this.assemblies.values()].map(a=>a.serialize()),foundation:this.foundation.serialize(),workforce:this.workforce.serialize(),jobs:this.queue.serialize(),resources:this.inventory.serialize()};}
