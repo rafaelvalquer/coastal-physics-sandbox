@@ -60,6 +60,6 @@ export class ScenarioEditor{
   return null;
  }
  pointerMove(x,y){if(this.activeCategory==="TERRAIN")this.applyTerrainTool(x,y);if(this.dragStart)this.dragCurrent={x,y};}
- pointerUp(x,y){if(!this.dragStart)return null;const start=this.dragStart,end={x,y};this.dragStart=null;this.dragCurrent=null;if(this.activeTool==="ROAD")return this.placeRoad(start,end);const mapped=this.activeTool==="PUMP"?"DRAINAGE":this.activeTool==="CHANNEL"?"DRAINAGE":this.activeTool;return this.placeDefense(mapped,start,end);}
+ pointerUp(x,y){if(!this.dragStart)return null;const start=this.dragStart,end={x,y};this.dragStart=null;this.dragCurrent=null;if(this.activeTool==="ROAD")return this.placeRoad(start,end);const mapped=this.activeTool==="CHANNEL"?"DRAINAGE":this.activeTool;return this.placeDefense(mapped,start,end);}
  snapshot(){return {category:this.activeCategory,tool:this.activeTool,brush:this.brush,dragStart:this.dragStart,dragCurrent:this.dragCurrent,template:this.template?.id||null,spent:this.spent,budgetLimit:this.budgetLimit,usedTools:[...this.usedTools],roads:structuredClone(this.roads)};}
 }
