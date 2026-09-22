@@ -7,6 +7,7 @@ export function StructuralInspector({ assembly, engine }) {
   const s = assembly.stability;
   const center = assembly.centerOfMass || { x: 0, y: 0 };
   const repair = () => engine?.game?.commandBus?.execute("structural:repair", { assemblyId: assembly.id, priority: "HIGH", workers: 4 });
+  const demolish = () => engine?.game?.commandBus?.execute("structural:demolish", { assemblyId: assembly.id, priority: "NORMAL", workers: 3 });
   const reinforce = (type) => engine?.game?.commandBus?.execute("structural:reinforce", {
     assemblyId: assembly.id, type, x: center.x, y: assembly.bounds?.maxY || center.y, priority: "HIGH", workers: 4
   });
@@ -44,6 +45,7 @@ export function StructuralInspector({ assembly, engine }) {
         <button onClick={() => reinforce("SHALLOW_PILE")}>Adicionar estaca</button>
         <button onClick={() => reinforce("ROCK_ANCHOR")}>Adicionar âncora</button>
         <button onClick={() => reinforce("TIEBACK")}>Adicionar tirante</button>
+        <button className="danger" onClick={demolish}>Programar demolição</button>
       </div>
     </section>
   );
