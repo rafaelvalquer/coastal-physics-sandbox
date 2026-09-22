@@ -73,6 +73,15 @@ export class StructuralGrid {
     }
   }
 
+  releaseFoundation(foundationId) {
+    for (const [key, cell] of this.cells) {
+      if (cell.foundationId === foundationId) {
+        cell.foundationId = null;
+        if (!cell.occupied) this.cells.delete(key);
+      }
+    }
+  }
+
   isOccupied(x, y) {
     return Boolean(this.getCell(x, y)?.occupied);
   }
