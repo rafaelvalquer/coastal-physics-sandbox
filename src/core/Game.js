@@ -44,6 +44,7 @@ import { CampaignManager } from "../gameplay/campaign/CampaignManager.js";
 import { DifficultyManager } from "../gameplay/campaign/DifficultyManager.js";
 import { AchievementManager } from "../gameplay/campaign/AchievementManager.js";
 import { TechnologyTree } from "../gameplay/technology/TechnologyTree.js";
+import { migrateSaveToV2 } from "../gameplay/save/SaveMigrationV2.js";
 
 import { BuildingRenderer } from "../rendering/BuildingRenderer.js";
 import { ConstructionRenderer } from "../rendering/ConstructionRenderer.js";
@@ -839,6 +840,7 @@ export class Game {
   }
 
   hydrate(value = {}) {
+    value = migrateSaveToV2(value);
     this.clock.hydrate(value.gameClock || {});
     this.state.hydrate(value.gameState || {});
     this.buildings.hydrate(value.buildings || []);
