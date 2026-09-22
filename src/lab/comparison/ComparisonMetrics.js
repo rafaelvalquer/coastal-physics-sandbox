@@ -1,0 +1,1 @@
+export function compareMetrics(a={},b={}){const keys=new Set([...Object.keys(a||{}),...Object.keys(b||{})]);return [...keys].map(metric=>({metric,a:Number(a?.[metric]||0),b:Number(b?.[metric]||0),delta:Number(b?.[metric]||0)-Number(a?.[metric]||0)}));}

@@ -1,0 +1,1 @@
+export class ChallengeDefinition{constructor(v={}){this.id=v.id;this.title=v.title;this.description=v.description||"";this.template=v.template||"coastal-town";this.budget=v.budget??null;this.event=structuredClone(v.event||{});this.environment=structuredClone(v.environment||{});this.objectives=structuredClone(v.objectives||[]);this.constraints=structuredClone(v.constraints||{});}}
