@@ -1,3 +1,5 @@
+import { WORLD } from "../../engine/world/constants.js";
+
 const PX_PER_METER = 48;
 
 export class FloodWaterRenderer {
@@ -16,7 +18,7 @@ export class FloodWaterRenderer {
 
       const x = i * water.dx;
       const surfaceY = water.surfaceYAtIndex(i);
-      const groundY = 720 - bedElevation;
+      const groundY = WORLD.height - bedElevation;
       const height = Math.max(1, groundY - surfaceY);
       const alpha = Math.min(0.68, 0.24 + depth * 0.28);
 
