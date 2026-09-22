@@ -21,8 +21,8 @@ export class WeatherDirector {
     this.phaseHours = 0;
   }
 
-  schedule(date) {
-    this.nextStorm = this.generator.generate(date);
+  schedule(date, overrides = {}) {
+    this.nextStorm = Object.assign(this.generator.generate(date), overrides);
     this.eventBus?.emit("storm:forecast", {
       storm: this.nextStorm,
       forecast: this.forecastSystem.forecast(this.nextStorm, 3)
