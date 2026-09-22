@@ -1,4 +1,4 @@
-import { ConstructionJob } from "./ConstructionJob.js";import { RepairJob } from "./RepairJob.js";import { ReinforcementJob } from "./ReinforcementJob.js";
+import { ConstructionJob } from "./ConstructionJob.js";import { RepairJob } from "./RepairJob.js";import { ReinforcementJob } from "./ReinforcementJob.js";import { DemolitionJob } from "./DemolitionJob.js";import { ExcavationJob } from "./ExcavationJob.js";
 const PRIORITY={EMERGENCY:4,HIGH:3,NORMAL:2,LOW:1};
 export class ConstructionQueue {
  constructor(){this.jobs=new Map();}
