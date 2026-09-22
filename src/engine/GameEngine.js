@@ -311,7 +311,7 @@ export class GameEngine {
     const xs = buildings.map((building) => building.x);
     const ys = buildings.map((building) => building.y - building.height / 2);
     this.camera.focusBounds({
-      minX: Math.min(...xs, 280),
+      minX: Math.min(...xs, 80),
       maxX: Math.max(...xs),
       minY: Math.min(...ys, 250),
       maxY: Math.max(...ys, 560)
@@ -332,7 +332,7 @@ export class GameEngine {
   }
 
   focusCoast() {
-    this.camera.focusBounds({ minX: 120, maxX: 900, minY: 300, maxY: 650 }, 70);
+    this.camera.focusBounds({ minX: 0, maxX: 900, minY: 300, maxY: 650 }, 70);
   }
 
   focusOnEntity(id, zoom = 1.65) {
