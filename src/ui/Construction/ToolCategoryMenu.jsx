@@ -43,7 +43,7 @@ export function ToolCategoryMenu({ category, selectedType, onSelect }) {
       {tools.map((tool) => (
         <button
           key={category + ":" + tool.type}
-          className={selectedType === tool.type ? "active" : ""}
+          className={(selectedType === tool.type || (selectedType === "EXCAVATE" && tool.type === "DIG")) ? "active" : ""}
           onClick={() => onSelect(tool)}
           title={tool.label}
         >
