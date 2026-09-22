@@ -5,6 +5,7 @@ export function bindLabCommands(app){
  c.register("lab:set-template",({id})=>app.loadTemplate(id));
  c.register("lab:disaster",({partial})=>{app.experiments.edit(e=>Object.assign(e.disaster,partial));app.disasterController.configure(partial);return {ok:true};});
  c.register("lab:preset",({id})=>{const d=app.disasterController.applyPreset(id);if(!d)return {ok:false};app.experiments.current.disaster=d;app.experiments.dirty=true;return {ok:true};});
+ c.register("lab:environment",({partial})=>{app.experiments.edit(e=>Object.assign(e.environment,partial||{}));return {ok:true};});
  c.register("lab:set-timeline",({keyframes})=>{app.experiments.current.disaster.timeline=structuredClone(keyframes||[]);app.disasterController.rebuild();app.experiments.dirty=true;return {ok:true};});
  c.register("lab:run",()=>({ok:app.runner.start()}));
  c.register("lab:pause",()=>({ok:app.runner.pause()}));
@@ -18,4 +19,6 @@ export function bindLabCommands(app){
  c.register("lab:start-challenge",({id})=>app.startChallenge(id));
  c.register("lab:sandbox",()=>app.startSandbox());
  c.register("lab:compare",({aId,bId})=>({ok:true,comparison:app.compareRuns(aId,bId)}));
+ c.register("lab:replay",()=>{app.engine.setRunning(false);app.replayPlayer.load(app.replay.serialize());app.runner.state="REPLAY";app.experiments.state="REPLAY";return {ok:true};});
+ c.register("lab:replay-seek",({time})=>({ok:true,checkpoint:app.replayPlayer.seek(time)}));
 }
