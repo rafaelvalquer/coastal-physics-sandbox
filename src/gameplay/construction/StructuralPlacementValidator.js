@@ -14,7 +14,10 @@ export class StructuralPlacementValidator {
       const world=this.grid.cellToWorld(raw.gridX,gridY);
       return {...world,gridX:raw.gridX,gridY,groundY};
     }
-    return {...raw,groundY:this.terrain.columnTopWorldYAt(raw.x)};
+    const groundY=this.terrain.columnTopWorldYAt(raw.x);
+    const groundCell=this.grid.worldToCell(raw.x,Math.max(0,groundY-this.grid.cellSize*.5));
+    const world=this.grid.cellToWorld(raw.gridX,groundCell.y);
+    return {...world,y:groundY,gridX:raw.gridX,gridY:groundCell.y,groundY};
   }
   validate(type,position){
     const cfg=this.config(type);if(!cfg)return {valid:false,reason:"Ferramenta desconhecida"};
