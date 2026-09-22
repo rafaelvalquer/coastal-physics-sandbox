@@ -1,0 +1,2 @@
+import { ScenarioTemplate } from "../ScenarioTemplate.js";
+export const HARBOR=new ScenarioTemplate({id:"harbor",name:"Harbor",description:"Porto, armazéns e canal expostos a ondas longas.",terrainPreset:"HARBOR",buildings:[{id:"port",type:"PORT",x:650},{id:"warehouse-1",type:"WAREHOUSE",x:760},{id:"warehouse-2",type:"WAREHOUSE",x:820},{id:"power-plant",type:"POWER_PLANT",x:930},{id:"hospital",type:"HOSPITAL",x:1040}],defenses:[{type:"BREAKWATER",x:480,length:24}]});

@@ -1,0 +1,2 @@
+import { ScenarioTemplate } from "../ScenarioTemplate.js";
+export const RIVER_MOUTH=new ScenarioTemplate({id:"river-mouth",name:"River Mouth",description:"Foz de rio combinando chuva, inundação e mar.",terrainPreset:"RIVER",buildings:[...Array.from({length:14},(_,i)=>({id:"river-house-"+(i+1),type:"HOUSE",x:680+(i%7)*55})),{id:"hospital",type:"HOSPITAL",x:970},{id:"power-plant",type:"POWER_PLANT",x:1060}]});

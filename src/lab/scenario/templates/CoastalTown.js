@@ -1,0 +1,2 @@
+import { ScenarioTemplate } from "../ScenarioTemplate.js";
+export const COASTAL_TOWN=new ScenarioTemplate({id:"coastal-town",name:"Coastal Town",description:"Cidade costeira compacta com hospital e infraestrutura crítica.",terrainPreset:"COASTAL",buildings:[...Array.from({length:16},(_,i)=>({id:"house-"+(i+1),type:"HOUSE",x:690+(i%8)*42})),{id:"hospital",type:"HOSPITAL",x:880},{id:"city-hall",type:"CITY_HALL",x:960},{id:"power-plant",type:"POWER_PLANT",x:1050},{id:"port",type:"PORT",x:620}]});

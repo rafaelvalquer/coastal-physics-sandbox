@@ -1,0 +1,2 @@
+import { ScenarioTemplate } from "../ScenarioTemplate.js";
+export const LOW_LYING_CITY=new ScenarioTemplate({id:"low-lying-city",name:"Low-Lying City",description:"Cidade plana imediatamente acima do nível médio do mar.",terrainPreset:"LOW",buildings:[...Array.from({length:20},(_,i)=>({id:"building-"+(i+1),type:i%3===0?"BUILDING":"HOUSE",x:675+(i%10)*40})),{id:"hospital",type:"HOSPITAL",x:930},{id:"power-plant",type:"POWER_PLANT",x:1040}]});
