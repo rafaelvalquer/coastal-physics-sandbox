@@ -13,7 +13,8 @@ export const TOOL_CATEGORIES = {
   ],
   STRUCTURE: [
     { type: "CONCRETE_BLOCK", label: "Bloco concreto", icon: "▥", mode: "structural" },
-    { type: "GABION", label: "Gabião", icon: "▧", mode: "structural" }
+    { type: "GABION", label: "Gabião", icon: "▧", mode: "structural" },
+    { type: "PRECAST_WALL", label: "Parede pré-moldada", icon: "▯", mode: "structural" }
   ],
   PROTECTION: [
     { type: "ROCK_UNIT", label: "Enrocamento", icon: "◆", mode: "structural" },
@@ -24,11 +25,13 @@ export const TOOL_CATEGORIES = {
   ],
   WATER: [
     { type: "DRAINAGE", label: "Drenagem", icon: "⇣", mode: "legacy" },
-    { type: "CHANNEL", label: "Canal", icon: "⌄", mode: "terrain" }
+    { type: "CHANNEL", label: "Canal", icon: "⌄", mode: "terrain" },
+    { type: "PORTABLE_PUMP", label: "Bomba portátil", icon: "↺", mode: "structural", priority: "HIGH" }
   ],
   EMERGENCY: [
     { type: "SANDBAG", label: "Saco de areia", icon: "▤", mode: "structural", priority: "EMERGENCY" },
     { type: "TEMP_BARRIER", label: "Barreira móvel", icon: "▯", mode: "structural", priority: "EMERGENCY" },
+    { type: "PORTABLE_PUMP", label: "Bomba portátil", icon: "↺", mode: "structural", priority: "EMERGENCY" },
     { type: "ROCK_UNIT", label: "Enrocamento emerg.", icon: "◆", mode: "structural", priority: "EMERGENCY" }
   ]
 };
