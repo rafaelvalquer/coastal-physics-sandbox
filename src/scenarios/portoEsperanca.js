@@ -23,7 +23,7 @@ export const PORTO_ESPERANCA = new ScenarioDefinition({
     { id: "port", type: "PORT", x: 610, y: 500 }
   ],
   floodZones: [
-    { id: "coastal", name: "Avenida Costeira", minX: 600, maxX: 760, priority: "HIGH" },
+    { id: "coastal", name: "Avenida Costeira", minX: 640, maxX: 760, priority: "HIGH" },
     { id: "low-district", name: "Bairro Baixo", minX: 760, maxX: 900, priority: "HIGH" },
     { id: "center", name: "Centro e Hospital", minX: 900, maxX: 1040, priority: "CRITICAL" },
     { id: "hills", name: "Encosta Segura", minX: 1040, maxX: 1275, priority: "SAFE" }
