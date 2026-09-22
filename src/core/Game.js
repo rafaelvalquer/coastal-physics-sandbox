@@ -160,7 +160,12 @@ export class Game {
     });
     this.overtopping = new OvertoppingSystem({
       water: engine.water,
-      constructions: this.constructions,
+      constructions: {
+        list: () => [
+          ...this.constructions.list(),
+          ...this.structuralEngineering.assemblies.values()
+        ]
+      },
       eventBus: this.eventBus
     });
     this.defenseEffectiveness = new DefenseEffectivenessSystem({
