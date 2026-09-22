@@ -1,0 +1,1 @@
+export class WaterDroplet{constructor({x,y,vx,vy,radius=1.5,life=1,mass=.001}={}){Object.assign(this,{type:"water",x,y,vx,vy,radius,life,maxLife:life,mass});}}
