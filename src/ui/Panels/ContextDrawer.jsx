@@ -5,6 +5,7 @@ import { InspectorPanel } from "../Inspector/InspectorPanel.jsx";
 import { CampaignPanel } from "../CampaignPanel/CampaignPanel.jsx";
 import { SeaStatePanel } from "./SeaStatePanel.jsx";
 import { FloodPanel } from "./FloodPanel.jsx";
+import { WorkforcePanel } from "../Workforce/WorkforcePanel.jsx";
 import { useUI } from "../state/UIStore.jsx";
 
 const TITLES = {
@@ -38,6 +39,7 @@ export function ContextDrawer({ engine, stats }) {
         {panel === "CITY" && (
           <>
             <EconomyPanel snapshot={snapshot} />
+            <WorkforcePanel engine={engine} snapshot={snapshot} />
             <FloodPanel snapshot={snapshot} />
           </>
         )}
