@@ -340,6 +340,22 @@ export class Game {
         y: assembly?.centerOfMass?.y
       });
     });
+    this.eventBus.on("structural:connection-failed", ({ assemblyId }) => {
+      const assembly=this.structuralEngineering.assemblies.get(assemblyId);
+      this.state.pushMessage("Conexão estrutural rompeu em " + assemblyId, "danger", {
+        entityId: assemblyId,
+        x: assembly?.centerOfMass?.x,
+        y: assembly?.centerOfMass?.y
+      });
+    });
+    this.eventBus.on("structural:foundation-failed", ({ assemblyId, mode }) => {
+      const assembly=this.structuralEngineering.assemblies.get(assemblyId);
+      this.state.pushMessage("Falha de fundação: " + mode + " em " + assemblyId, "danger", {
+        entityId: assemblyId,
+        x: assembly?.centerOfMass?.x,
+        y: assembly?.centerOfMass?.y
+      });
+    });
     this.eventBus.on("job:completed", ({ job }) => {
       const label = job.type === "REPAIR" ? "Reparo concluído" : "Obra concluída";
       const toolType = job.blueprint?.type;
