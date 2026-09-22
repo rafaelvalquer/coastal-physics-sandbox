@@ -409,6 +409,16 @@ export class Game {
     this.commandBus.register("structural:cancel-job", ({ jobId }) => ({
       ok: this.structuralEngineering.scheduler.cancel(jobId)
     }));
+    this.commandBus.register("resources:purchase", ({ material, quantity = 1 }) => {
+      const result = this.structuralEngineering.inventory.purchase(material, quantity);
+      if (result.ok) {
+        this.state.pushMessage(
+          "Comprado: " + quantity + " de " + material + " por $" + Math.round(result.cost).toLocaleString("pt-BR"),
+          "success"
+        );
+      }
+      return result;
+    });
     this.commandBus.register("structural:repair", ({ assemblyId, priority = "HIGH", workers = 4 }) => {
       return this.structuralEngineering.scheduleRepair(assemblyId, { priority, workers });
     });
