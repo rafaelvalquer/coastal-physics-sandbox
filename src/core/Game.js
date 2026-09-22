@@ -407,7 +407,7 @@ export class Game {
       ok: this.structuralEngineering.scheduler.setPriority(jobId, priority)
     }));
     this.commandBus.register("structural:cancel-job", ({ jobId }) => ({
-      ok: this.structuralEngineering.scheduler.cancel(jobId)
+      ok: this.structuralEngineering.cancelJob(jobId)
     }));
     this.commandBus.register("resources:purchase", ({ material, quantity = 1 }) => {
       const result = this.structuralEngineering.inventory.purchase(material, quantity);
