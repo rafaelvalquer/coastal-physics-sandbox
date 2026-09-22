@@ -241,6 +241,9 @@ export class GameEngine {
     }
 
     const center = this.terrain.worldToCell(x, y);
+    if (this.tool === TOOLS.DIG && initialClick) {
+      this.game?.eventBus?.emit("terrain:excavated", { x, y });
+    }
     const r = this.brushSize;
     const materialByTool = {
       [TOOLS.SAND]: MATERIALS.SAND,
