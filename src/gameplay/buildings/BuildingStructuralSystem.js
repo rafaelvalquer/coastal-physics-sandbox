@@ -159,5 +159,38 @@ export class BuildingStructuralSystem{
   }
  }
 
- snapshot(){return {assemblies:[...this.assemblies.values()].map(a=>a.serialize()),blockCount:this.blocks.size,failed:[...this.assemblies.values()].filter(a=>a.failed).length,fractured:[...this.assemblies.values()].filter(a=>a.fractured).length};}
+ serialize(){
+  return {
+   blocks:[...this.blocks.values()].map(b=>b.serialize()),
+   assemblies:[...this.assemblies.values()].map(a=>a.serialize()),
+   graph:this.graph.serialize(),
+   foundation:this.foundation.serialize(),
+   buildingToAssembly:[...this.buildingToAssembly.entries()],
+   destroyedBuildings:[...this.destroyedBuildings]
+  };
+ }
+
+ hydrate(value={}){
+  this.clear();
+  for(const raw of value.blocks||[]){const block=new StructuralBlock(raw);this.blocks.set(block.id,block);}
+  this.graph.hydrate(value.graph||[]);
+  this.foundation.hydrate(value.foundation||[]);
+  for(const raw of value.assemblies||[]){
+   const blocks=(raw.blockIds||[]).map(id=>this.blocks.get(id)).filter(Boolean);
+   const assembly=new StructuralAssembly({...raw,blocks});
+   Object.assign(assembly,raw);
+   assembly.blocks=blocks;
+   assembly.recalculate(this.grid,this.foundation.extraMassesForAssembly(assembly));
+   this.assemblies.set(assembly.id,assembly);
+  }
+  this.buildingToAssembly=new Map(value.buildingToAssembly||[]);
+  this.destroyedBuildings=new Set(value.destroyedBuildings||[]);
+  for(const building of this.buildingManager.list()){
+   const assembly=this.assemblyForBuilding(building.id);
+   if(assembly){building.structuralAssemblyId=assembly.id;building.structuralState=assembly.collapseState;building.structuralBounds=assembly.bounds;}
+   else this.ensureAssembly(building);
+  }
+ }
+
+ snapshot(){return {assemblies:[...this.assemblies.values()].map(a=>a.serialize()),blockCount:this.blocks.size,failed:[...this.assemblies.values()].filter(a=>a.failed).length,fractured:[...this.assemblies.values()].filter(a=>a.fractured).length,debris:this.engine.rigidBodies.bodies.filter(b=>b.sourceAssemblyId).length};}
 }
