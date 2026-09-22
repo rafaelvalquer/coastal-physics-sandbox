@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GameCanvas } from "../../components/GameCanvas.jsx";
 import { TopHUD } from "../HUD/TopHUD.jsx";
+import { StormTimeline } from "../HUD/StormTimeline.jsx";
 import { ConstructionToolbar } from "../Construction/ConstructionToolbar.jsx";
 import { ContextDrawer } from "../Panels/ContextDrawer.jsx";
 import { SimulationLabDrawer } from "../SimulationLab/SimulationLabDrawer.jsx";
@@ -47,6 +48,7 @@ export function GameShell() {
       </div>
 
       <TopHUD engine={engine} snapshot={snapshot} />
+      <StormTimeline snapshot={snapshot} />
 
       <ContextDrawer engine={engine} stats={stats} />
       <SimulationLabDrawer engine={engine} stats={stats} />
