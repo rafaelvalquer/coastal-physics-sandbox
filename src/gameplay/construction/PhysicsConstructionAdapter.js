@@ -107,7 +107,13 @@ export class PhysicsConstructionAdapter {
     }
 
     this.snapshots.set(construction.id, changes);
-    this.footprints.set(construction.id, { columns, type: construction.type });
+    this.footprints.set(construction.id, {
+      columns: columns.map((column) => ({
+        ...column,
+        builtTop: terrain.columnTopCell(column.x)
+      })),
+      type: construction.type
+    });
     this.engine.water.refreshBed();
   }
 
@@ -194,6 +200,46 @@ export class PhysicsConstructionAdapter {
     drain.overflowing = overflowing;
   }
 
+  updateHydraulicDissipation(construction, dt) {
+    if (construction.type !== "RIPRAP" && construction.type !== "BREAKWATER") return;
+    const water = this.engine.water;
+    const footprint = this.footprints.get(construction.id);
+    if (!footprint?.columns?.length) return;
+
+    const dissipation = Math.max(0, Math.min(1, construction.dissipation || 0));
+    const permeability = Math.max(0, Math.min(1, construction.permeability ?? 0.5));
+    const roughness = construction.type === "BREAKWATER" ? (construction.roughness || 0.8) : (construction.friction || 0.7);
+    const dragRate = (0.45 + roughness * 0.8) * dissipation * (1 - permeability * 0.42);
+    const damping = Math.exp(-dt * dragRate);
+
+    for (const column of footprint.columns) {
+      const worldX = (column.x + 0.5) * this.engine.terrain.cellSize;
+      const index = Math.max(0, Math.min(water.n - 1, Math.floor(worldX / water.dx)));
+      if (water.h[index] <= 0.05) continue;
+      water.q[index] *= damping;
+      if (index + 1 < water.n) water.q[index + 1] *= Math.sqrt(damping);
+      if (index > 0) water.q[index - 1] *= Math.sqrt(damping);
+    }
+  }
+
+  updateDuneCondition(construction) {
+    if (construction.type !== "DUNE") return;
+    const terrain = this.engine.terrain;
+    const footprint = this.footprints.get(construction.id);
+    if (!footprint?.columns?.length) return;
+
+    let ratio = 0;
+    for (const column of footprint.columns) {
+      const currentTop = terrain.columnTopCell(column.x);
+      const expectedHeight = Math.max(1, column.baselineTop - column.builtTop);
+      const remainingHeight = Math.max(0, column.baselineTop - currentTop);
+      ratio += Math.min(1, remainingHeight / expectedHeight);
+    }
+    ratio /= footprint.columns.length;
+    construction.condition = Math.min(construction.condition, Math.max(0, ratio));
+    construction.remainingDuneVolume = ratio;
+  }
+
   updateWaveWear(construction, dt) {
     if (construction.type !== "RIPRAP" && construction.type !== "BREAKWATER") return;
     const water = this.engine.water;
@@ -231,6 +277,8 @@ export class PhysicsConstructionAdapter {
       this.updateFoundationExposure(construction);
       if (construction.type === "VEGETATION") this.updateVegetation(construction, dt);
       if (construction.type === "DRAINAGE") this.updateDrainage(construction, dt);
+      if (construction.type === "DUNE") this.updateDuneCondition(construction);
+      this.updateHydraulicDissipation(construction, dt);
       this.updateWaveWear(construction, dt);
 
       if (construction.condition <= 0) {
