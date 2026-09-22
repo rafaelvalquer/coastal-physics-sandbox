@@ -410,6 +410,11 @@ export class Game {
       if (this.tutorial.current === "OPEN_FORECAST") this.tutorial.complete();
       return { ok: true };
     });
+    this.commandBus.register("structural:action-select", ({ type }) => {
+      this.clearConstruction();
+      this.structuralEngineering.selectAction(type);
+      return { ok: true, type };
+    });
     this.commandBus.register("structural:select", ({ type, category = null, priority = "NORMAL" }) => {
       this.clearConstruction();
       this.structuralEngineering.planner.select(type, category, priority);
@@ -418,6 +423,7 @@ export class Game {
     });
     this.commandBus.register("structural:cancel", () => {
       this.structuralEngineering.planner.clear();
+      this.structuralEngineering.clearAction();
       return { ok: true };
     });
     this.commandBus.register("structural:set-workers", ({ jobId, workers }) => {
@@ -613,6 +619,16 @@ export class Game {
   }
 
   handleWorldClick(x, y) {
+    if (this.structuralEngineering.selectedAction) {
+      const result = this.structuralEngineering.scheduleTerrainJob(
+        this.structuralEngineering.selectedAction,
+        { x, y },
+        { priority: "NORMAL", workers: this.structuralEngineering.selectedAction === "EXCAVATE" ? 3 : 2 }
+      );
+      if (!result.ok) this.state.pushMessage(result.reason || "Serviço de terreno inválido", "warning");
+      else this.state.pushMessage("Serviço programado: " + this.structuralEngineering.selectedAction, "info", { x, y });
+      return result;
+    }
     if (this.structuralEngineering.planner.selectedType) {
       const result = this.structuralEngineering.planner.plan({ x, y });
       if (!result.ok) this.state.pushMessage(result.reason || "Projeto estrutural inválido", "warning");
@@ -795,7 +811,7 @@ export class Game {
         completed: this.tutorial.completed
       },
       selectedConstruction: this.state.selectedConstruction,
-      selectedStructuralTool: this.structuralEngineering.planner.selectedType,
+      selectedStructuralTool: this.structuralEngineering.planner.selectedType || this.structuralEngineering.selectedAction,
       selectedInspection: this.state.selectedInspection
         ? this.engine.inspectWorld?.(this.state.selectedInspection.x, this.state.selectedInspection.y) || this.state.selectedInspection
         : null,
