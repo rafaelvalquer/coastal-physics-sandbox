@@ -14,6 +14,14 @@ import { EconomyManager } from "../gameplay/economy/EconomyManager.js";
 
 import { ClimateProfile } from "../gameplay/weather/ClimateProfile.js";
 import { WeatherDirector } from "../gameplay/weather/WeatherDirector.js";
+import { SeaStateController } from "../gameplay/ocean/SeaStateController.js";
+import { OffshoreWaveGenerator } from "../gameplay/ocean/OffshoreWaveGenerator.js";
+import { CoastalRunupSystem } from "../gameplay/ocean/CoastalRunupSystem.js";
+import { OvertoppingSystem } from "../gameplay/ocean/OvertoppingSystem.js";
+import { DefenseEffectivenessSystem } from "../gameplay/ocean/DefenseEffectivenessSystem.js";
+import { FloodZoneManager } from "../gameplay/flood/FloodZoneManager.js";
+import { FloodFrontTracker } from "../gameplay/flood/FloodFrontTracker.js";
+import { UrbanFloodDamage } from "../gameplay/flood/UrbanFloodDamage.js";
 
 import { PlacementValidator } from "../gameplay/construction/PlacementValidator.js";
 import { ConstructionManager } from "../gameplay/construction/ConstructionManager.js";
@@ -120,6 +128,53 @@ export class Game {
       profile: this.climate
     });
 
+    this.seaRandom = new SeededRandom(this.scenario.seed + "_SEA");
+    this.seaState = new SeaStateController({
+      weatherDirector: this.weather,
+      clock: this.clock,
+      random: this.seaRandom,
+      eventBus: this.eventBus
+    });
+    this.offshoreWaves = new OffshoreWaveGenerator({
+      water: engine.water,
+      surfaceWaves: engine.surfaceWaves,
+      seaState: this.seaState,
+      eventBus: this.eventBus
+    });
+    this.runup = new CoastalRunupSystem({
+      water: engine.water,
+      terrain: engine.terrain,
+      eventBus: this.eventBus
+    });
+    this.overtopping = new OvertoppingSystem({
+      water: engine.water,
+      constructions: this.constructions,
+      eventBus: this.eventBus
+    });
+    this.defenseEffectiveness = new DefenseEffectivenessSystem({
+      water: engine.water,
+      surfaceWaves: engine.surfaceWaves,
+      seaState: this.seaState,
+      constructions: this.constructions
+    });
+    this.floodZones = new FloodZoneManager({
+      zones: this.scenario.floodZones,
+      water: engine.water,
+      buildings: this.buildings,
+      eventBus: this.eventBus
+    });
+    this.floodFront = new FloodFrontTracker({
+      water: engine.water,
+      shorelineX: this.runup.baselineShorelineX,
+      buildings: this.buildings
+    });
+    this.urbanFlood = new UrbanFloodDamage({
+      floodZones: this.floodZones,
+      eventBus: this.eventBus
+    });
+    this.postPhysicsAccumulator = 0;
+    this.defenseMetersBuilt = 0;
+
     this.objectives = new ObjectiveManager({
       eventBus: this.eventBus,
       scenario: this.scenario
@@ -198,8 +253,18 @@ export class Game {
       }
     });
     this.eventBus.on("construction:placed", ({ construction }) => {
-      this.state.pushMessage("Construído: " + construction.type, "success");
-      if (this.tutorial.current === "BUILD_20M_PROTECTION") this.tutorial.complete();
+      this.defenseMetersBuilt += construction.length || 0;
+      this.state.pushMessage(
+        "Construído: " + construction.type + " · " + Math.round(this.defenseMetersBuilt) + " m de defesa",
+        "success",
+        { entityId: construction.id, x: construction.x, y: construction.y }
+      );
+      if (
+        this.tutorial.current === "BUILD_20M_PROTECTION" ||
+        (this.tutorial.current === "BUILD_40M_PROTECTION" && this.defenseMetersBuilt >= 40)
+      ) {
+        this.tutorial.complete();
+      }
     });
     this.eventBus.on("storm:forecast", () => {
       this.state.pushMessage("Nova previsão de tempestade disponível.", "warning");
@@ -209,8 +274,45 @@ export class Game {
       this.state.pushMessage("Tempestade atingiu Porto Esperança.", "danger");
     });
     this.eventBus.on("storm:ended", () => {
-      this.state.pushMessage("Tempestade encerrada. Inspecione os danos.", "info");
+      this.state.pushMessage("Ressaca encerrada. Inspecione alagamentos e danos.", "info");
       if (this.tutorial.current === "REVIEW_DAMAGE") this.tutorial.complete();
+    });
+    this.eventBus.on("sea:wave-crest", ({ crest }) => {
+      if (this.tutorial.current === "OBSERVE_SEA" && crest >= 3) this.tutorial.complete();
+    });
+    this.eventBus.on("sea:phase-changed", ({ phase }) => {
+      const messages = {
+        FORECAST: ["Previsão de ressaca disponível. Prepare a costa.", "warning"],
+        APPROACH: ["A ressaca começou a se aproximar.", "warning"],
+        BUILDUP: ["O mar está subindo e as ondas estão ganhando força.", "warning"],
+        PEAK: ["PICO DA RESSACA: monitore ultrapassagens e alagamentos.", "danger"],
+        DECAY: ["A ressaca está perdendo força.", "info"],
+        RECOVERY: ["Recuperação: a água começa a recuar.", "info"]
+      };
+      if (messages[phase]) this.state.pushMessage(messages[phase][0], messages[phase][1]);
+      if (phase === "FORECAST" && this.tutorial.current === "OPEN_FORECAST") this.tutorial.complete();
+    });
+    this.eventBus.on("coast:overtopping", ({ constructionId, severity, location, landwardDepth, discharge }) => {
+      if (location) {
+        this.engine.particles?.spawnSplash?.(
+          location.x,
+          location.y - 8,
+          Math.min(2.6, 0.8 + discharge * 2.2)
+        );
+      }
+      if (severity === "HIGH" || severity === "CRITICAL") {
+        this.state.pushMessage(
+          "Água ultrapassando " + constructionId + " · " + landwardDepth.toFixed(2) + " m atrás da defesa",
+          severity === "CRITICAL" ? "danger" : "warning",
+          { entityId: constructionId, x: location?.x, y: location?.y }
+        );
+      }
+    });
+    this.eventBus.on("flood:threshold", ({ zoneName, threshold, level }) => {
+      this.state.pushMessage(
+        zoneName + ": alagamento atingiu " + threshold.toFixed(2) + " m (" + level + ")",
+        threshold >= 0.5 ? "danger" : "warning"
+      );
     });
     this.eventBus.on("drainage:overflow", () => {
       this.state.pushMessage("Drenagem operando acima da capacidade.", "warning");
@@ -233,6 +335,10 @@ export class Game {
   }
 
   bindCommands() {
+    this.commandBus.register("ui:forecast-opened", () => {
+      if (this.tutorial.current === "OPEN_FORECAST") this.tutorial.complete();
+      return { ok: true };
+    });
     this.commandBus.register("construction:select", ({ type, length = 20 }) => {
       this.selectConstruction(type, length);
       return { ok: true };
@@ -269,6 +375,23 @@ export class Game {
       if (ok) this.state.pushMessage("Energia priorizada para " + buildingId + ".", "success", { entityId: buildingId });
       return { ok, nodeId };
     });
+    this.commandBus.register("construction:repair", ({ id, amount = 0.25, cost = 1200 }) => {
+      const construction = this.constructions.list().find((item) => item.id === id);
+      if (!construction) return { ok: false, reason: "Defesa não encontrada" };
+      if (!this.economy.budget.spend(cost, "REPAIR", id)) {
+        return { ok: false, reason: "Orçamento insuficiente" };
+      }
+      construction.condition = Math.min(1, construction.condition + Math.max(0, amount));
+      construction.operational = construction.condition > 0.05;
+      construction.foundationExposure = Math.max(0, construction.foundationExposure - amount * 0.15);
+      this.state.pushMessage("Defesa reparada: " + id, "success", {
+        entityId: id,
+        x: construction.x,
+        y: construction.y
+      });
+      if (this.tutorial.current === "REPAIR") this.tutorial.complete();
+      return { ok: true, construction };
+    });
     this.commandBus.register("building:repair", ({ id, amount = 25, cost = 1500 }) => {
       const building = this.buildings.get(id);
       if (!building) return { ok: false, reason: "Prédio não encontrado" };
@@ -282,9 +405,20 @@ export class Game {
   }
 
   scheduleOnboardingStorm() {
+    if (this.scenario.id !== "porto-esperanca") return;
     const date = new Date(this.clock.startDate);
-    date.setUTCDate(date.getUTCDate() + 390);
-    this.weather.schedule(date);
+    date.setUTCHours(date.getUTCHours() + 60);
+    this.weather.schedule(date, {
+      name: "Primeira Ressaca",
+      targetWaveHeight: 2.8,
+      stormSurge: 0.8,
+      maxWindSpeed: 72,
+      rainfallRate: 38,
+      approachDuration: 14,
+      peakDuration: 5,
+      decayDuration: 12,
+      intensity: 0.78
+    });
   }
 
   setSpeed(speed) {
@@ -333,6 +467,31 @@ export class Game {
     };
   }
 
+  inspectConstructionAt(x, y) {
+    const construction = this.constructions.list().find((candidate) => {
+      const halfWidth = Math.max(12, Math.min(180, candidate.length * 6));
+      return (
+        x >= candidate.x - halfWidth &&
+        x <= candidate.x + halfWidth &&
+        Math.abs(y - candidate.y) <= 34
+      );
+    });
+    if (!construction) return null;
+    return {
+      id: construction.id,
+      type: construction.type,
+      x: construction.x,
+      y: construction.y,
+      length: construction.length,
+      condition: construction.condition,
+      operational: construction.operational,
+      foundationExposure: construction.foundationExposure,
+      overflowing: construction.overflowing || false,
+      overtopping: construction.overtopping || null,
+      effectiveness: construction.effectiveness || null
+    };
+  }
+
   handleWorldClick(x, y) {
     if (!this.state.selectedConstruction) {
       const inspection = this.engine.inspectWorld?.(x, y) || null;
@@ -354,10 +513,12 @@ export class Game {
       this.weather.update(calendarDt, this.clock);
 
       const weather = this.weather.state;
+      const sea = this.seaState.update(dt);
       this.engine.atmosphere.wind = weather.windSpeed / 3.6;
       this.engine.atmosphere.rain = weather.rainfall;
-      this.engine.atmosphere.tide = weather.tideOffset;
+      this.engine.atmosphere.tide = sea.totalLevel;
       this.engine.atmosphere.gustiness = Math.min(1, 0.18 + weather.stormIntensity * 0.75);
+      this.offshoreWaves.update(dt);
 
       this.foundation.update(this.buildings.list(), dt);
       this.damage.update(dt);
@@ -419,6 +580,20 @@ export class Game {
     });
   }
 
+  postPhysicsUpdate(dt) {
+    this.postPhysicsAccumulator += dt;
+    if (this.postPhysicsAccumulator < 0.05) return;
+    const elapsed = this.postPhysicsAccumulator;
+    this.postPhysicsAccumulator = 0;
+
+    this.runup.update(elapsed);
+    this.overtopping.update(elapsed);
+    this.defenseEffectiveness.update();
+    this.floodZones.update(elapsed);
+    this.floodFront.update(elapsed);
+    this.urbanFlood.update();
+  }
+
   createSnapshot(powerState = this.power.update(), waterState = this.waterUtility.snapshot()) {
     const buildings = Object.fromEntries(
       this.buildings.list().map((building) => [building.id, {
@@ -465,14 +640,22 @@ export class Game {
       constructions: this.constructions.list().map((construction) => construction.serialize()),
       forecast: this.weather.getForecast(3),
       weather: { ...this.weather.state },
-      stormPhase: this.weather.phase,
+      stormPhase: this.seaState.state.phase,
+      sea: this.seaState.snapshot(),
+      runup: this.runup.snapshot(),
+      overtopping: this.overtopping.snapshot(),
+      floodZones: this.floodZones.snapshot(),
+      floodFront: this.floodFront.snapshot(),
+      urbanFlood: this.urbanFlood.snapshot(),
       objectives: this.objectives.status(),
       tutorial: {
         current: this.tutorial.current,
         completed: this.tutorial.completed
       },
       selectedConstruction: this.state.selectedConstruction,
-      selectedInspection: this.state.selectedInspection,
+      selectedInspection: this.state.selectedInspection
+        ? this.engine.inspectWorld?.(this.state.selectedInspection.x, this.state.selectedInspection.y) || this.state.selectedInspection
+        : null,
       constructionPreview: this.state.selectedConstruction && this.engine.pointer?.inside
         ? this.constructionTool.inspect({ x: this.engine.pointer.x, y: this.engine.pointer.y })
         : null,
@@ -484,7 +667,8 @@ export class Game {
       technology: [...this.technology.unlocked],
       achievements: [...this.achievements.unlocked],
       difficulty: this.difficulty.level,
-      campaign: this.campaign.serialize()
+      campaign: this.campaign.serialize(),
+      defenseMetersBuilt: this.defenseMetersBuilt
     };
   }
 
@@ -519,7 +703,14 @@ export class Game {
       technology: this.technology.serialize(),
       campaign: this.campaign.serialize(),
       achievements: this.achievements.serialize(),
-      difficulty: this.difficulty.serialize()
+      difficulty: this.difficulty.serialize(),
+      seaState: this.seaState.serialize(),
+      offshoreWaves: this.offshoreWaves.serialize(),
+      runup: this.runup.serialize(),
+      overtopping: this.overtopping.serialize(),
+      floodZones: this.floodZones.serialize(),
+      floodFront: this.floodFront.serialize(),
+      defenseMetersBuilt: this.defenseMetersBuilt
     };
   }
 
@@ -539,6 +730,13 @@ export class Game {
     this.achievements.hydrate(value.achievements || {});
     if (value.difficulty?.level) this.difficulty.set(value.difficulty.level);
     this.constructions.hydrate(value.constructions || []);
+    this.seaState.hydrate(value.seaState || {});
+    this.offshoreWaves.hydrate(value.offshoreWaves || {});
+    this.runup.hydrate(value.runup || {});
+    this.overtopping.hydrate(value.overtopping || {});
+    this.floodZones.hydrate(value.floodZones || {});
+    this.floodFront.hydrate(value.floodFront || {});
+    this.defenseMetersBuilt = Number(value.defenseMetersBuilt || 0);
     this.lastSnapshot = this.createSnapshot();
   }
 }

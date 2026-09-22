@@ -747,3 +747,186 @@ input[type="range"] { width: 100%; accent-color: #25a5c2; }
   font-size: 9px;
   line-height: 1.5;
 }
+
+
+/* Coastal defense gameplay */
+.storm-timeline {
+  position: absolute;
+  z-index: 38;
+  top: 76px;
+  left: 50%;
+  width: min(430px, calc(100vw - 720px));
+  min-width: 300px;
+  transform: translateX(-50%);
+  padding: 7px 9px;
+  background: rgba(5, 16, 23, .88);
+  border: 1px solid rgba(57, 104, 124, .45);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.22);
+  backdrop-filter: blur(9px);
+  pointer-events: none;
+}
+.storm-timeline.forecast,
+.storm-timeline.approach,
+.storm-timeline.buildup { border-color: rgba(203, 154, 64, .55); }
+.storm-timeline.peak { border-color: rgba(212, 79, 72, .72); box-shadow: 0 12px 34px rgba(110,25,21,.24); }
+.storm-timeline.decay,
+.storm-timeline.recovery { border-color: rgba(68, 139, 154, .58); }
+
+.storm-timeline-title,
+.storm-timeline-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.storm-timeline-title > div:first-child { display: grid; gap: 1px; }
+.storm-timeline-title small { color: #708e9a; font-size: 6px; letter-spacing: .12em; }
+.storm-timeline-title strong { color: #e5f2f4; font-size: 9px; }
+.storm-wave-readout { display: flex; gap: 8px; color: #9cb8c2; font-size: 7px; }
+.storm-progress {
+  height: 3px;
+  margin: 5px 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #102733;
+}
+.storm-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #32a7c2, #e5bd5a, #e66f63);
+  transition: width 180ms linear;
+}
+.storm-timeline-footer { color: #728f9b; font-size: 7px; }
+
+.sea-state-panel,
+.flood-panel { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(66,101,118,.28); }
+
+.sea-energy {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+.sea-energy > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.sea-energy small { color: #6f8c98; font-size: 7px; text-transform: uppercase; }
+.sea-energy strong { color: #cfe9ee; font-size: 10px; }
+.sea-energy-bar {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #102731;
+}
+.sea-energy-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #39a8c5, #7dc7ce, #dfb653, #e46a5f);
+  transition: width 180ms linear;
+}
+
+.flood-front-warning {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 9px;
+  padding: 8px;
+  border: 1px solid rgba(205, 120, 73, .5);
+  border-radius: 8px;
+  background: rgba(57, 29, 22, .26);
+}
+.flood-front-warning small { color: #d38f69; font-size: 6px; letter-spacing: .1em; }
+.flood-front-warning strong { color: #ffd0ae; font-size: 13px; }
+.flood-front-warning span { color: #a99084; font-size: 8px; }
+
+.flood-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+.flood-summary span {
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  color: #6f8e99;
+  font-size: 7px;
+  background: #0b1921;
+  border: 1px solid #18303c;
+  border-radius: 7px;
+}
+.flood-summary b { color: #d5e9ed; font-size: 11px; }
+
+.flood-zone-list { display: grid; gap: 5px; }
+.flood-zone {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 8px;
+  padding: 7px;
+  border: 1px solid #1c3440;
+  border-radius: 8px;
+  background: rgba(10, 26, 34, .68);
+}
+.flood-zone > div:first-child { display: grid; gap: 2px; }
+.flood-zone strong { color: #d3e5e9; font-size: 8px; }
+.flood-zone small { color: #6f8b96; font-size: 7px; }
+.flood-zone-depth { display: grid; gap: 1px; text-align: right; }
+.flood-zone-depth b { color: #9ed5df; font-size: 10px; }
+.flood-zone-depth span { color: #627e89; font-size: 6px; }
+.flood-zone-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #6f8994;
+  font-size: 6px;
+}
+.flood-zone.flooded,
+.flood-zone.traffic { border-color: rgba(199, 151, 65, .45); }
+.flood-zone.buildings,
+.flood-zone.severe,
+.flood-zone.structural { border-color: rgba(203, 77, 69, .58); background: rgba(67, 24, 23, .24); }
+.flood-zone.severe .flood-zone-depth b,
+.flood-zone.structural .flood-zone-depth b { color: #ffaaa0; }
+
+@media (max-width: 1199px) {
+  .storm-timeline { width: 320px; min-width: 0; }
+}
+@media (max-width: 899px) {
+  .storm-timeline { display: none; }
+}
+
+
+.defense-inspector {
+  margin-bottom: 12px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid rgba(66, 101, 118, .32);
+}
+.defense-risk {
+  display: grid;
+  gap: 4px;
+  margin: 9px 0;
+  padding: 7px;
+  border: 1px solid #23404e;
+  border-radius: 8px;
+  background: rgba(10, 25, 33, .72);
+}
+.defense-risk small { color: #718f9b; font-size: 6px; letter-spacing: .09em; }
+.defense-risk strong { color: #cfe8ed; font-size: 14px; }
+.defense-risk > div {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #0c222c;
+}
+.defense-risk > div span {
+  display: block;
+  height: 100%;
+  background: #55bb8e;
+}
+.defense-risk.warning { border-color: rgba(204,154,61,.48); }
+.defense-risk.warning > div span { background: #d3ad4e; }
+.defense-risk.critical { border-color: rgba(206,76,68,.58); }
+.defense-risk.critical > div span { background: #d75d54; }

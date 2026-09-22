@@ -1,12 +1,22 @@
 import { WORLD } from '../world/constants.js';
 import { MATERIAL_BY_ID, MATERIALS } from '../world/materials.js';
 import { clamp } from '../utils/math.js';
+import { OceanSurfaceRenderer } from '../../rendering/ocean/OceanSurfaceRenderer.js';
+import { WaveCrestRenderer } from '../../rendering/ocean/WaveCrestRenderer.js';
+import { FoamRenderer } from '../../rendering/ocean/FoamRenderer.js';
+import { RunupRenderer } from '../../rendering/ocean/RunupRenderer.js';
+import { FloodWaterRenderer } from '../../rendering/ocean/FloodWaterRenderer.js';
 
 export class Renderer {
   constructor(canvas, engine) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d', { alpha: false });
     this.engine = engine;
+    this.oceanSurfaceRenderer = new OceanSurfaceRenderer();
+    this.waveCrestRenderer = new WaveCrestRenderer();
+    this.foamRenderer = new FoamRenderer();
+    this.runupRenderer = new RunupRenderer();
+    this.floodWaterRenderer = new FloodWaterRenderer();
     this.pixelRatio = Math.min(2, window.devicePixelRatio || 1);
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas);
@@ -79,8 +89,12 @@ export class Renderer {
     ctx.translate(ox, oy);
     ctx.scale(scale, scale);
     this.drawSky(ctx);
-    this.drawWater(ctx);
+    this.oceanSurfaceRenderer.draw(ctx, this.engine);
     this.drawTerrain(ctx);
+    this.floodWaterRenderer.draw(ctx, this.engine);
+    this.waveCrestRenderer.draw(ctx, this.engine);
+    this.foamRenderer.draw(ctx, this.engine);
+    this.runupRenderer.draw(ctx, this.engine);
     this.engine.game?.render?.(ctx);
     this.drawRigidBodies(ctx);
     this.drawParticles(ctx);

@@ -15,7 +15,7 @@ export class ForecastSystem {
     return {
       horizonDays,
       wind: range(storm.maxWindSpeed),
-      waves: range(0.8 + storm.intensity * 3.3),
+      waves: range(storm.targetWaveHeight || (0.8 + storm.intensity * 3.3)),
       tide: range(storm.stormSurge),
       rain: range(storm.rainfallRate),
       confidence: horizonDays <= 1 ? "HIGH" : horizonDays <= 3 ? "MEDIUM" : "LOW"

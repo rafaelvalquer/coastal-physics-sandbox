@@ -19,14 +19,20 @@ export class WeatherDirector {
     this.lastDay = -1;
     this.phase = "CALM";
     this.phaseHours = 0;
+    this.forecastLeadHours = 48;
+    this.forecastAnnounced = false;
   }
 
-  schedule(date) {
-    this.nextStorm = this.generator.generate(date);
-    this.eventBus?.emit("storm:forecast", {
-      storm: this.nextStorm,
-      forecast: this.forecastSystem.forecast(this.nextStorm, 3)
-    });
+  schedule(date, overrides = {}) {
+    this.nextStorm = Object.assign(this.generator.generate(date), overrides);
+    this.forecastAnnounced = false;
+    if (overrides.announceImmediately) {
+      this.forecastAnnounced = true;
+      this.eventBus?.emit("storm:forecast", {
+        storm: this.nextStorm,
+        forecast: this.forecastSystem.forecast(this.nextStorm, 3)
+      });
+    }
     return this.nextStorm;
   }
 
@@ -53,7 +59,8 @@ export class WeatherDirector {
     if (this.nextStorm && !this.activeStorm) {
       const startDate = new Date(this.nextStorm.startDate);
       const hours = (startDate - clock.getDate()) / 36e5;
-      if (hours <= 72 && hours > 0) {
+      if (hours <= this.forecastLeadHours && hours > 0 && !this.forecastAnnounced) {
+        this.forecastAnnounced = true;
         this.eventBus?.emit("storm:forecast", {
           storm: this.nextStorm,
           forecast: this.forecastSystem.forecast(this.nextStorm, Math.max(1, hours / 24))
@@ -113,8 +120,12 @@ export class WeatherDirector {
   }
 
   getForecast(days = 3) {
-    if (this.nextStorm) return this.forecastSystem.forecast(this.nextStorm, days);
-    if (this.activeStorm) return this.forecastSystem.forecast(this.activeStorm, Math.min(1, days));
+    if (this.nextStorm && this.forecastAnnounced) {
+      return this.forecastSystem.forecast(this.nextStorm, days);
+    }
+    if (this.activeStorm) {
+      return this.forecastSystem.forecast(this.activeStorm, Math.min(1, days));
+    }
     return null;
   }
 
@@ -125,7 +136,9 @@ export class WeatherDirector {
       nextStorm: this.nextStorm,
       phase: this.phase,
       phaseHours: this.phaseHours,
-      lastDay: this.lastDay
+      lastDay: this.lastDay,
+      forecastLeadHours: this.forecastLeadHours,
+      forecastAnnounced: this.forecastAnnounced
     };
   }
 
@@ -136,5 +149,7 @@ export class WeatherDirector {
     this.phase = value.phase || "CALM";
     this.phaseHours = Number(value.phaseHours || 0);
     this.lastDay = Number(value.lastDay ?? -1);
+    this.forecastLeadHours = Number(value.forecastLeadHours || 48);
+    this.forecastAnnounced = Boolean(value.forecastAnnounced);
   }
 }

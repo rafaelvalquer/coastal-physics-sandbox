@@ -20,9 +20,12 @@ export function TopHUD({ engine, snapshot }) {
 
   const speed = engine?.game?.clock?.timeScale || 0;
   const storm = snapshot.forecast;
-  const alert = storm
-    ? "Alerta costeiro · " + storm.confidence
-    : "Condições estáveis";
+  const sea = snapshot.sea;
+  const alert = sea
+    ? sea.phase + " · " + sea.significantWaveHeight.toFixed(1) + " m"
+    : storm
+      ? "Alerta costeiro · " + storm.confidence
+      : "Condições estáveis";
 
   return (
     <header className="top-hud">

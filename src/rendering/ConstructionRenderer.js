@@ -38,6 +38,23 @@ export class ConstructionRenderer {
         ctx.stroke();
       }
 
+      const risk = construction.effectiveness?.riskLabel;
+      if (risk) {
+        const label = risk === "CRITICAL" ? "⚠" : risk === "WARNING" ? "!" : "✓";
+        ctx.font = "bold 12px system-ui";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = risk === "CRITICAL"
+          ? "#ff766b"
+          : risk === "WARNING"
+            ? "#f1c85a"
+            : "#72d8a1";
+        ctx.strokeStyle = "rgba(4,12,17,.9)";
+        ctx.lineWidth = 3;
+        ctx.strokeText(label, 0, -24);
+        ctx.fillText(label, 0, -24);
+      }
+
       ctx.restore();
     }
   }

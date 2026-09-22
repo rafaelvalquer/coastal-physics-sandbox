@@ -210,6 +210,7 @@ export class GameEngine {
     this.structural.update(dt);
     this.rigidBodies.update(dt, this.water, this.terrain);
     this.particles.update(dt, this.water, this.terrain);
+    this.game?.postPhysicsUpdate?.(dt);
   }
 
   spawnInitialDebris() {
@@ -310,7 +311,7 @@ export class GameEngine {
     const xs = buildings.map((building) => building.x);
     const ys = buildings.map((building) => building.y - building.height / 2);
     this.camera.focusBounds({
-      minX: Math.min(...xs, 280),
+      minX: Math.min(...xs, 80),
       maxX: Math.max(...xs),
       minY: Math.min(...ys, 250),
       maxY: Math.max(...ys, 560)
@@ -331,7 +332,7 @@ export class GameEngine {
   }
 
   focusCoast() {
-    this.camera.focusBounds({ minX: 120, maxX: 900, minY: 300, maxY: 650 }, 70);
+    this.camera.focusBounds({ minX: 0, maxX: 900, minY: 300, maxY: 650 }, 70);
   }
 
   focusOnEntity(id, zoom = 1.65) {
@@ -402,7 +403,8 @@ export class GameEngine {
       pressure: this.water.pressure[wi],
       sediment: this.water.sediment[wi],
       breaking: this.water.breaking[wi],
-      building: this.game?.inspectAt?.(x, y) || null
+      building: this.game?.inspectAt?.(x, y) || null,
+      construction: this.game?.inspectConstructionAt?.(x, y) || null
     };
   }
 

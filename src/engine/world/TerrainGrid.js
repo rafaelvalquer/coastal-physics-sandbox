@@ -105,25 +105,37 @@ export class TerrainGrid {
       const worldX = x * this.cellSize;
       const noise = smoothNoise1D(nx * 7.5, 814) * 10 + smoothNoise1D(nx * 19, 91) * 4;
 
+      // Porto Esperança is shaped as an explicit coastal-defense cross section:
+      // ocean -> beach -> low district -> center -> critical infrastructure -> safe hill.
       let topY = 620 + noise;
-      const beachRise = smoothstep(0.48, 0.67, nx);
-      const islandFall = smoothstep(0.91, 1.0, nx);
-      const hill = Math.exp(-Math.pow((nx - 0.76) / 0.16, 2));
-      topY -= beachRise * 155;
-      topY -= hill * 175;
-      topY += islandFall * 90;
-      topY = clamp(topY, 210, 650);
+      const beachRise = smoothstep(0.34, 0.50, nx);
+      const urbanRise = smoothstep(0.56, 0.72, nx);
+      const hill = Math.exp(-Math.pow((nx - 0.82) / 0.15, 2));
+      const islandFall = smoothstep(0.96, 1.0, nx);
+      topY -= beachRise * 205;
+      topY -= urbanRise * 52;
+      topY -= hill * 118;
+      topY += islandFall * 58;
+
+      // Slight terrace shaping makes flood progression readable without creating
+      // artificial barriers: the hydraulic solver still uses the real bed.
+      if (worldX >= 620 && worldX < 780) {
+        topY += 10 * smoothNoise1D(nx * 5.2, 1201);
+      } else if (worldX >= 780 && worldX < 1010) {
+        topY -= 8;
+      }
+      topY = clamp(topY, 225, 650);
 
       const topRow = clamp(Math.floor(topY / this.cellSize), 0, this.rows - 1);
       for (let y = topRow; y < this.rows; y++) {
         const depth = y - topRow;
         let mat = MATERIALS.ROCK;
         if (depth <= 2) {
-          if (worldX < WORLD.width * 0.66) mat = MATERIALS.SAND;
-          else mat = nx > 0.69 && nx < 0.91 ? MATERIALS.SOIL : MATERIALS.SAND;
+          if (worldX < 650) mat = MATERIALS.SAND;
+          else mat = nx > 0.50 && nx < 0.94 ? MATERIALS.SOIL : MATERIALS.SAND;
         } else if (depth <= 6) {
-          mat = nx > 0.68 && nx < 0.9 ? MATERIALS.CLAY : MATERIALS.GRAVEL;
-        } else if (depth <= 10 && nx > 0.67) {
+          mat = nx > 0.50 && nx < 0.92 ? MATERIALS.CLAY : MATERIALS.GRAVEL;
+        } else if (depth <= 10 && nx > 0.50) {
           mat = MATERIALS.SOIL;
         }
         this.setCell(x, y, mat.id, 1, nx < 0.63 ? 0.7 : 0.18);
@@ -131,7 +143,7 @@ export class TerrainGrid {
     }
 
     // Pequeno afloramento rochoso na zona de arrebentação.
-    const rx = Math.floor(this.cols * 0.56);
+    const rx = Math.floor(this.cols * 0.43);
     for (let dx = -3; dx <= 4; dx++) {
       const top = this.columnTopCell(rx + dx);
       for (let dy = 0; dy < 3 - Math.floor(Math.abs(dx) * 0.3); dy++) {
