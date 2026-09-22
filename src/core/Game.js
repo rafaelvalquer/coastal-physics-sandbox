@@ -441,6 +441,9 @@ export class Game {
       }
       return result;
     });
+    this.commandBus.register("structural:demolish", ({ assemblyId, priority = "NORMAL", workers = 3 }) => {
+      return this.structuralEngineering.scheduleDemolition(assemblyId, { priority, workers });
+    });
     this.commandBus.register("structural:repair", ({ assemblyId, priority = "HIGH", workers = 4 }) => {
       return this.structuralEngineering.scheduleRepair(assemblyId, { priority, workers });
     });
