@@ -345,6 +345,9 @@ export class Game {
         y: assembly?.centerOfMass?.y
       });
     });
+    this.eventBus.on("structural:unit-displaced", ({ blockId, type, x, y }) => {
+      this.state.pushMessage(type + " deslocado pelas ondas: " + blockId, "warning", { x, y });
+    });
     this.eventBus.on("structural:connection-failed", ({ assemblyId }) => {
       const assembly=this.structuralEngineering.assemblies.get(assemblyId);
       this.state.pushMessage("Conexão estrutural rompeu em " + assemblyId, "danger", {
