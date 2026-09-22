@@ -14,6 +14,7 @@ export const TOOLS = {
   INSPECT: 'inspect',
   IMPULSE: 'impulse',
   DIG: 'dig',
+  COMPACT: 'compact',
   SAND: 'sand',
   SOIL: 'soil',
   ROCK: 'rock',
