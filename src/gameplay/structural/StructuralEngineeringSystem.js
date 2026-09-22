@@ -175,6 +175,28 @@ export class StructuralEngineeringSystem {
     this.engine.water.setStructuralObstacles?.(obstacles);
   }
 
+  updateLooseProtection(dt){
+    const water=this.engine.water;
+    for(const block of this.blocks.values()){
+      if(!["ROCK_UNIT","TETRAPOD"].includes(block.type)||block.progress<1||block.integrity<=0)continue;
+      const p=block.worldCenter(this.grid),i=Math.max(0,Math.min(water.n-1,Math.floor(p.x/water.dx)));
+      const velocity=water.velocityAtIndex(i)/48,depth=(water.h[i]||0)/48;
+      if(depth<.15)continue;
+      const threshold=block.type==="TETRAPOD"?(2.8+(block.interlock||.8)*1.5):(1.8+(block.interlock||.4)*1.2);
+      const excess=Math.abs(velocity)-threshold;
+      if(excess<=0)continue;
+      const direction=Math.sign(velocity)||1;
+      block.displacementX+=direction*excess*dt*5;
+      block.integrity=Math.max(.2,block.integrity-excess*dt*.0015);
+      if(Math.abs(block.displacementX)>8){
+        this.graph.removeForBlock(block.id);
+        block.connected=false;
+        this.rebuildNeeded=true;
+        this.eventBus?.emit("structural:unit-displaced",{blockId:block.id,type:block.type,x:p.x,y:p.y});
+      }
+    }
+  }
+
   updatePumps(dt){
     const water=this.engine.water;
     for(const block of this.blocks.values()){
@@ -253,7 +275,9 @@ export class StructuralEngineeringSystem {
       if(!wasFailed&&a.failed)this.fractureAssembly(a);
     }
     if(this.rebuildNeeded)this.rebuildAssemblies();
+    this.updateLooseProtection(elapsed);
     this.updatePumps(elapsed);
+    if(this.rebuildNeeded)this.rebuildAssemblies();
     this.syncWaterObstacles();
   }
 
