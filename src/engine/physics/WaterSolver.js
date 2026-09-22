@@ -36,6 +36,7 @@ export class WaterSolver {
     this.totalVolume = 0;
     this.kineticEnergy = 0;
     this.waveEnergy = 0;
+    this.offshoreBoundary = null;
     this.refreshBed();
     this.resetWater();
   }
@@ -103,6 +104,10 @@ export class WaterSolver {
     this.h[i] += amount;
   }
 
+  setOffshoreBoundary(value = null) {
+    this.offshoreBoundary = value ? { ...value } : null;
+  }
+
   update(dt) {
     this.time += dt;
     this.refreshBed();
@@ -115,16 +120,23 @@ export class WaterSolver {
     const windAbs = Math.abs(this.atmosphere.wind);
     const swellAmp = Math.min(10, Math.pow(windAbs / 8, 1.35) * 1.6) * (0.35 + this.atmosphere.gustiness);
     const swellFreq = 0.55 + Math.min(1.4, windAbs * 0.035);
-    const boundaryEta = seaTarget
-      + Math.sin(this.time * swellFreq) * swellAmp
-      + smoothNoise1D(this.time * 0.37, 51) * swellAmp * 0.55;
+    const external = this.offshoreBoundary;
+    const backgroundSignal =
+      Math.sin(this.time * swellFreq) * swellAmp +
+      smoothNoise1D(this.time * 0.37, 51) * swellAmp * 0.55;
+    const forcedSignal = external
+      ? (external.waveAmplitudePx || 0) * (external.signal || 0) + (external.levelOffsetPx || 0)
+      : 0;
+    const boundaryEta = seaTarget + backgroundSignal * 0.35 + forcedSignal;
 
-    for (let i = 0; i < Math.min(8, this.n); i++) {
+    for (let i = 0; i < Math.min(10, this.n); i++) {
       const targetH = Math.max(0, boundaryEta - this.bed[i]);
-      const nudge = 1 - Math.exp(-dt * (3.5 - i * 0.28));
+      const nudge = 1 - Math.exp(-dt * (4.4 - i * 0.31));
       this.h[i] += (targetH - this.h[i]) * nudge;
-      const targetU = this.atmosphere.wind * 2.2;
-      this.q[i] += (targetU * this.h[i] - this.q[i]) * nudge * 0.12;
+      const windCurrent = this.atmosphere.wind * 2.2;
+      const waveCurrent = external?.currentVelocityPx || 0;
+      const targetU = windCurrent + waveCurrent;
+      this.q[i] += (targetU * this.h[i] - this.q[i]) * nudge * 0.16;
     }
 
     // Rainfall: 1 mm/h is intentionally scaled for gameplay while preserving
