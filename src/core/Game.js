@@ -304,6 +304,7 @@ export class Game {
       };
       if (messages[phase]) this.state.pushMessage(messages[phase][0], messages[phase][1]);
       if (phase === "FORECAST" && this.tutorial.current === "OPEN_FORECAST") this.tutorial.complete();
+      if (phase === "PEAK" && this.tutorial.current === "WATCH_STORM") this.tutorial.complete();
     });
     this.eventBus.on("coast:overtopping", ({ constructionId, severity, location, landwardDepth, discharge }) => {
       if (location) {
@@ -340,17 +341,30 @@ export class Game {
     });
     this.eventBus.on("job:completed", ({ job }) => {
       const label = job.type === "REPAIR" ? "Reparo concluído" : "Obra concluída";
-      this.state.pushMessage(label + ": " + (job.blueprint?.type || job.targetId || job.id), "success");
+      const toolType = job.blueprint?.type;
+      this.state.pushMessage(label + ": " + (toolType || job.targetId || job.id), "success");
+
+      if (this.tutorial.current === "BUILD_FOOTING" && toolType === "FOUNDATION_BLOCK") {
+        this.tutorial.complete();
+      }
+      if (this.tutorial.current === "PLACE_TWO_PILES") {
+        const count = [...this.structuralEngineering.foundation.elements.values()]
+          .filter((item) => item.kind === "PILE" && (item.progress ?? 0) >= 1).length;
+        if (count >= 2) this.tutorial.complete();
+      }
+      if (this.tutorial.current === "BUILD_WALL_3M" && toolType === "CONCRETE_BLOCK") {
+        const tallEnough = [...this.structuralEngineering.assemblies.values()]
+          .some((assembly) => assembly.heightMeters >= 3);
+        if (tallEnough) this.tutorial.complete();
+      }
+      if (this.tutorial.current === "INSTALL_ANCHOR" && toolType === "ROCK_ANCHOR") {
+        this.tutorial.complete();
+      }
       if (this.tutorial.current === "WAIT_CONSTRUCTION") this.tutorial.complete();
       if (job.type === "REPAIR" && this.tutorial.current === "REPAIR") this.tutorial.complete();
     });
-    this.eventBus.on("foundation:placed", ({ foundation }) => {
-      if (this.tutorial.current === "BUILD_FOOTING" && foundation.type === "FOUNDATION_BLOCK") this.tutorial.complete();
-      if (this.tutorial.current === "PLACE_TWO_PILES") {
-        const count = [...this.structuralEngineering.foundation.elements.values()].filter((item) => item.kind === "PILE").length;
-        if (count >= 2) this.tutorial.complete();
-      }
-      if (this.tutorial.current === "INSTALL_ANCHOR" && foundation.kind === "ANCHOR") this.tutorial.complete();
+    this.eventBus.on("terrain:excavated", () => {
+      if (this.tutorial.current === "EXCAVATE_FOUNDATION") this.tutorial.complete();
     });
     this.eventBus.on("construction:failed", ({ constructionId }) => {
       const construction = this.constructions.list().find((item) => item.id === constructionId);
@@ -384,9 +398,11 @@ export class Game {
       this.structuralEngineering.planner.clear();
       return { ok: true };
     });
-    this.commandBus.register("structural:set-workers", ({ jobId, workers }) => ({
-      ok: this.structuralEngineering.scheduler.setWorkers(jobId, workers)
-    }));
+    this.commandBus.register("structural:set-workers", ({ jobId, workers }) => {
+      const ok = this.structuralEngineering.scheduler.setWorkers(jobId, workers);
+      if (ok && this.tutorial.current === "ASSIGN_WORKERS") this.tutorial.complete();
+      return { ok };
+    });
     this.commandBus.register("structural:set-priority", ({ jobId, priority }) => ({
       ok: this.structuralEngineering.scheduler.setPriority(jobId, priority)
     }));
@@ -508,6 +524,9 @@ export class Game {
   setOverlayByIndex(index) {
     const overlay = OVERLAYS[index] || null;
     this.state.overlay = this.state.overlay === overlay ? null : overlay;
+    if (overlay === "STRUCTURAL_PHYSICS" && this.tutorial.current === "VIEW_CENTER_OF_MASS") {
+      this.tutorial.complete();
+    }
     return this.state.overlay;
   }
 
@@ -576,6 +595,13 @@ export class Game {
       const inspection = this.engine.inspectWorld?.(x, y) || null;
       this.state.selectInspection(inspection);
       if (this.tutorial.current === "INSPECT_COAST") this.tutorial.complete();
+      if (this.tutorial.current === "INSPECT_SOIL" && inspection?.material) this.tutorial.complete();
+      if (
+        (this.tutorial.current === "CHECK_STABILITY" || this.tutorial.current === "COMPARE_STABILITY") &&
+        inspection?.construction?.type === "STRUCTURAL_ASSEMBLY"
+      ) {
+        this.tutorial.complete();
+      }
       return inspection;
     }
     const result = this.constructionTool.place({ x, y });
