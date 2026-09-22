@@ -5,6 +5,7 @@ let sequence = 1;
 export class StructuralAssembly {
   constructor({ id, blocks = [], foundationIds = [], anchorIds = [], condition = 1, rotation = 0, displacementX = 0 } = {}) {
     this.id = id || "assembly-" + sequence++;
+    this.type = "STRUCTURAL_ASSEMBLY";
     this.blocks = blocks;
     this.foundationIds = [...foundationIds];
     this.anchorIds = [...anchorIds];
