@@ -147,7 +147,7 @@ export class StructuralFailureSystem {
       : active.filter((_, index) => index % Math.ceil(active.length / 8) === 0).slice(0, 8);
 
     for (const [index, block] of candidates.entries()) {
-      const center = this.grid ? block.worldCenter(this.grid) : assembly.centerOfMass;
+      const center = this.grid && block.worldCenter ? block.worldCenter(this.grid) : (assembly.centerOfMass || { x: 0, y: 0 });
       const type = String(block.type || "");
       const material = block.debrisMaterial ||
         (type.includes("WOOD") ? "wood" :
