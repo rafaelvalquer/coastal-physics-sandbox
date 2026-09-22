@@ -131,7 +131,7 @@ export class GameEngine {
       if (event.target?.matches?.("input, select, textarea")) return;
       this.keysDown.add(event.code);
 
-      const match = /^F([1-9]|10)$/.exec(event.key);
+      const match = /^F([1-9]|10|11)$/.exec(event.key);
       if (match) {
         event.preventDefault();
         this.game?.setOverlayByIndex(Number(match[1]) - 1);
@@ -219,7 +219,7 @@ export class GameEngine {
   }
 
   applyTool(x, y, initialClick) {
-    if (this.game?.state.selectedConstruction) {
+    if (this.game?.state.selectedConstruction || this.game?.structuralEngineering?.planner?.selectedType) {
       if (initialClick) this.game.handleWorldClick(x, y);
       return;
     }
