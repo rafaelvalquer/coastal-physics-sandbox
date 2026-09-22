@@ -9,6 +9,7 @@ export class SurfaceWaveSolver {
     this.displacement = new Float32Array(this.n);
     this.velocity = new Float32Array(this.n);
     this.nextVelocity = new Float32Array(this.n);
+    this.boundaryForcing = null;
     this.time = 0;
   }
 
@@ -20,6 +21,10 @@ export class SurfaceWaveSolver {
       const w = Math.exp(-(d * d) / 16);
       this.velocity[i] += magnitude * 95 * w;
     }
+  }
+
+  setBoundaryForcing(value = null) {
+    this.boundaryForcing = value ? { ...value } : null;
   }
 
   update(dt) {
@@ -57,6 +62,17 @@ export class SurfaceWaveSolver {
       this.displacement[i] = clamp(this.displacement[i], -14, 14);
       mean += this.displacement[i];
       wetCount++;
+    }
+
+    if (this.boundaryForcing) {
+      const target = (this.boundaryForcing.amplitudePx || 0) * (this.boundaryForcing.signal || 0);
+      const count = Math.min(12, this.n);
+      for (let i = 0; i < count; i++) {
+        if (this.water.h[i] <= 0.1) continue;
+        const weight = Math.exp(-i * 0.2);
+        const response = 1 - Math.exp(-dt * (5.2 - i * 0.22));
+        this.displacement[i] += (target * weight - this.displacement[i]) * response;
+      }
     }
 
     // Remove DC offset: visual ripples cannot create/destroy water volume.
