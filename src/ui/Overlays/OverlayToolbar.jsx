@@ -10,7 +10,8 @@ const ITEMS = [
   ["F7", "Risco", "FLOOD_RISK"],
   ["F8", "Estruturas", "STRUCTURAL"],
   ["F9", "Energia", "POWER"],
-  ["F10", "Evacuação", "EVACUATION"]
+  ["F10", "Evacuação", "EVACUATION"],
+  ["F11", "Estrutural", "STRUCTURAL_PHYSICS"]
 ];
 
 export function OverlayToolbar({ engine, snapshot }) {
@@ -18,7 +19,7 @@ export function OverlayToolbar({ engine, snapshot }) {
   if (!state.overlayToolbarOpen) {
     return (
       <button className="overlay-collapsed" onClick={() => dispatch({ type: "TOGGLE_OVERLAYS" })}>
-        F1–F10
+        F1–F11
       </button>
     );
   }
