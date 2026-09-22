@@ -9,6 +9,7 @@ export class AssemblyBuilder {
   build(blocks = [], existing = []) {
     const byId = new Map(blocks.map((block) => [block.id, block]));
     const visited = new Set();
+    const usedPrevious = new Set();
     const assemblies = [];
 
     for (const block of blocks) {
@@ -31,8 +32,10 @@ export class AssemblyBuilder {
       }
 
       const previous = existing.find((assembly) =>
+        !usedPrevious.has(assembly.id) &&
         assembly.blocks.some((item) => component.some((candidate) => candidate.id === item.id))
       );
+      if (previous) usedPrevious.add(previous.id);
       const assembly = previous || new StructuralAssembly();
       assembly.blocks = component;
       for (const item of component) item.assemblyId = assembly.id;
