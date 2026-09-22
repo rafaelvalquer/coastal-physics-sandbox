@@ -74,7 +74,8 @@ export class LabApplication{
  }
  bindEvents(){
   const log=(type,label,severity="info")=>this.eventBus.on(type,payload=>this.recordEvent(label,severity,payload));
-  log("coast:overtopping","Ultrapassagem de defesa","warning");log("building:destroyed","Edificação destruída","danger");log("construction:failed","Defesa costeira falhou","danger");log("flood:threshold","Novo limiar de inundação","warning");
+  log("coast:overtopping","Ultrapassagem de defesa","warning");log("building:destroyed","Edificação destruída","danger");log("building:structural-collapse","Colapso estrutural de edificação","danger");log("structural:failed","Estrutura perdeu estabilidade","warning");log("construction:failed","Defesa costeira falhou","danger");log("flood:threshold","Novo limiar de inundação","warning");
+  this.eventBus.on("structural:fractured",p=>{const a=this.buildingStructures?.assemblies?.get?.(p.assemblyId);const x=a?.centerOfMass?.x??p.position?.x??0,y=a?.centerOfMass?.y??p.position?.y??0;this.engine.particles.spawnDebrisDust?.(x,y,1.8);this.recordEvent("Estrutura fraturou em debris","danger",{...p,position:{x,y}});});
   this.eventBus.on("city:flood-state",p=>{if(p.severity!=="DRY")this.recordEvent("Estado de inundação: "+p.severity,p.severity==="STRUCTURAL"?"danger":"warning",p);});
  }
  recordEvent(label,severity="info",payload={}){
