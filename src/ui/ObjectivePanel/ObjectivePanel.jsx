@@ -1,5 +1,7 @@
 const TASK_LABELS = {
+  OBSERVE_SEA: "Observe três ondas chegando do oceano",
   INSPECT_COAST: "Inspecione a costa",
+  BUILD_40M_PROTECTION: "Construa 40 m de proteção costeira",
   BUILD_20M_PROTECTION: "Construa 20 m de proteção",
   OPEN_FORECAST: "Observe a previsão",
   PREPARE_STORM: "Prepare-se para a ressaca",
