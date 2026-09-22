@@ -219,7 +219,7 @@ export class GameEngine {
   }
 
   applyTool(x, y, initialClick) {
-    if (this.game?.state.selectedConstruction || this.game?.structuralEngineering?.planner?.selectedType) {
+    if (this.game?.state.selectedConstruction || this.game?.structuralEngineering?.planner?.selectedType || this.game?.structuralEngineering?.selectedAction) {
       if (initialClick) this.game.handleWorldClick(x, y);
       return;
     }
