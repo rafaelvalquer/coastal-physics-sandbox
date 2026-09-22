@@ -1,4 +1,6 @@
 import { MATERIALS } from "../../engine/world/materials.js";
+import { PorousFlowSolver } from "../../engine/fluid/coastal/PorousFlowSolver.js";
+import { LocalScourSystem } from "../../engine/fluid/coastal/LocalScourSystem.js";
 
 const WORLD_PIXELS_PER_BUILD_METER = 12;
 
@@ -9,6 +11,7 @@ export class PhysicsConstructionAdapter {
     this.snapshots = new Map();
     this.drains = new Map();
     this.footprints = new Map();
+    this.scour = new LocalScourSystem({ terrain: engine.terrain, water: engine.water });
   }
 
   apply(construction) {
@@ -195,7 +198,7 @@ export class PhysicsConstructionAdapter {
 
       let outlet = Math.max(0, source - 8);
       while (outlet > 0 && water.bed[outlet] >= water.baseSeaElevation - 2) outlet--;
-      water.h[outlet] += removal * 0.97;
+      water.h[outlet] += removal;
       water.sediment[outlet] += water.sediment[source] * 0.001 * removal;
     }
 
@@ -209,30 +212,23 @@ export class PhysicsConstructionAdapter {
 
   updateHydraulicDissipation(construction, dt) {
     if (construction.type !== "RIPRAP" && construction.type !== "BREAKWATER") return;
-    const water = this.engine.water;
     const footprint = this.footprints.get(construction.id);
     if (!footprint?.columns?.length) return;
 
-    const dissipation = Math.max(0, Math.min(1, construction.dissipation || 0));
-    const permeability = Math.max(0, Math.min(1, construction.permeability ?? 0.5));
-    const roughness = construction.type === "BREAKWATER" ? (construction.roughness || 0.8) : (construction.friction || 0.7);
-    const dragRate = (0.45 + roughness * 0.8) * dissipation * (1 - permeability * 0.42);
-    const damping = Math.exp(-dt * dragRate);
-
+    const indices = [];
     for (const column of footprint.columns) {
       const worldX = (column.x + 0.5) * this.engine.terrain.cellSize;
-      const index = Math.max(0, Math.min(water.n - 1, Math.floor(worldX / water.dx)));
-      if (water.h[index] <= 0.05) continue;
-      water.q[index] *= damping;
-      if (index + 1 < water.n) water.q[index + 1] *= Math.sqrt(damping);
-      if (index > 0) water.q[index - 1] *= Math.sqrt(damping);
-
-      const waves = this.engine.surfaceWaves;
-      if (waves) {
-        waves.velocity[index] *= damping;
-        waves.displacement[index] *= 0.995 + 0.005 * damping;
-      }
+      const index = Math.max(0, Math.min(this.engine.water.n - 1, Math.floor(worldX / this.engine.water.dx)));
+      if (!indices.includes(index)) indices.push(index);
     }
+
+    const result = PorousFlowSolver.apply(this.engine.water, indices, {
+      permeability: construction.permeability ?? 0.35,
+      roughness: construction.roughness || construction.friction || 0.75,
+      dissipation: construction.dissipation ?? 0.7,
+      dt
+    });
+    construction.hydraulicDissipation = result;
   }
 
   updateDuneCondition(construction) {
@@ -254,34 +250,51 @@ export class PhysicsConstructionAdapter {
   }
 
   updateWaveWear(construction, dt) {
-    if (construction.type !== "RIPRAP" && construction.type !== "BREAKWATER") return;
+    if (!["RIPRAP", "BREAKWATER", "CONCRETE_WALL", "TEMP_BARRIER", "SANDBAG"].includes(construction.type)) return;
     const water = this.engine.water;
     const index = Math.max(0, Math.min(water.n - 1, Math.floor(construction.x / water.dx)));
     const speed = Math.abs(water.velocityAtIndex(index)) / 48;
     const depth = (water.h[index] || 0) / 48;
+    if (depth <= 0.02) return;
+
+    const load = this.engine.fluidStructureCoupler?.evaluate?.(
+      construction.id,
+      construction.x,
+      { heightMeters: Math.max(0.5, construction.height || 2), widthMeters: 1 }
+    ) || null;
+    construction.hydrodynamicLoad = load;
 
     if (construction.type === "RIPRAP") {
       const threshold = construction.displacementThreshold || 2.4;
-      if (depth > 0.2 && speed > threshold) {
-        construction.condition = Math.max(
-          0,
-          construction.condition - (speed - threshold) * dt * 0.003
-        );
-        construction.displacement = Math.min(
-          1,
-          (construction.displacement || 0) + (speed - threshold) * dt * 0.002
-        );
+      const forcing = Math.max(0, speed - threshold) + (load?.breaking || 0) * 0.7;
+      if (forcing > 0) {
+        construction.condition = Math.max(0, construction.condition - forcing * dt * 0.0025);
+        construction.displacement = Math.min(1, (construction.displacement || 0) + forcing * dt * 0.002);
       }
     } else {
-      const pressure = 0.5 * 1000 * speed * speed;
-      const threshold = 1800 * (construction.resistance || 1);
-      if (pressure > threshold) {
-        construction.condition = Math.max(
-          0,
-          construction.condition - ((pressure - threshold) / 100000) * dt
+      const peak = load?.peakPressure || 0;
+      const resistancePa =
+        construction.type === "CONCRETE_WALL" ? 85000 :
+        construction.type === "BREAKWATER" ? 65000 :
+        construction.type === "TEMP_BARRIER" ? 32000 : 12000;
+      if (peak > resistancePa) {
+        const overload = (peak - resistancePa) / resistancePa;
+        construction.condition = Math.max(0, construction.condition - overload * dt * 0.012);
+      }
+      if ((load?.slammingForce || 0) > 12000) {
+        this.engine.spraySystem?.structureImpact?.(
+          construction.x,
+          water.surfaceYAtX(construction.x),
+          { energy: Math.abs(load.slammingForce) * 0.08, normal: -1 }
         );
       }
     }
+
+    this.scour.updateAt(construction.x, {
+      widthPx: Math.max(16, Math.min(120, construction.length * 4)),
+      intensity: 1 + (load?.breaking || 0),
+      dt
+    });
   }
 
   update(dt, constructions = []) {

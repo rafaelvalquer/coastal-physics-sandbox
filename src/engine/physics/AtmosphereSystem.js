@@ -6,11 +6,16 @@ export class AtmosphereSystem {
     this.wind = 8;
     this.gustiness = 0.28;
     this.rain = 0;
+    this.astronomicalTide = 0;
+    this.stormSurge = 0;
+    this.waveSetup = 0;
     this.tide = 0;
+    this.hydrologyTimeScale = 1;
   }
 
   update(dt) {
     this.time += dt;
+    this.tide = this.astronomicalTide + this.stormSurge + this.waveSetup;
   }
 
   windAt(normalizedX = 0.5) {
@@ -26,7 +31,11 @@ export class AtmosphereSystem {
       wind: this.wind,
       gustiness: this.gustiness,
       rain: this.rain,
-      tide: this.tide
+      astronomicalTide: this.astronomicalTide,
+      stormSurge: this.stormSurge,
+      waveSetup: this.waveSetup,
+      tide: this.tide,
+      hydrologyTimeScale: this.hydrologyTimeScale
     };
   }
 
@@ -36,6 +45,10 @@ export class AtmosphereSystem {
     this.wind = Number(data.wind ?? 8);
     this.gustiness = Number(data.gustiness ?? 0.28);
     this.rain = Number(data.rain ?? 0);
-    this.tide = Number(data.tide ?? 0);
+    this.astronomicalTide = Number(data.astronomicalTide ?? data.tide ?? 0);
+    this.stormSurge = Number(data.stormSurge ?? 0);
+    this.waveSetup = Number(data.waveSetup ?? 0);
+    this.tide = Number(data.tide ?? (this.astronomicalTide + this.stormSurge + this.waveSetup));
+    this.hydrologyTimeScale = Number(data.hydrologyTimeScale ?? 1);
   }
 }

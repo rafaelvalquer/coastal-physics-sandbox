@@ -16,6 +16,12 @@ import { Game } from '../core/Game.js';
 import { LabApplication } from '../lab/application/LabApplication.js';
 import { WorldCamera } from '../gameplay/camera/WorldCamera.js';
 import { CameraController } from '../gameplay/camera/CameraController.js';
+import { WaterImpactCoupler } from './fluid/coupling/WaterImpactCoupler.js';
+import { WakeGenerator } from './fluid/coupling/WakeGenerator.js';
+import { FluidRigidBodyCoupler } from './fluid/coupling/FluidRigidBodyCoupler.js';
+import { FluidStructureCoupler } from './fluid/coupling/FluidStructureCoupler.js';
+import { SplashEmitter } from './fluid/effects/SplashEmitter.js';
+import { SpraySystem } from './fluid/effects/SpraySystem.js';
 
 export class GameEngine {
   constructor(canvas, onStats, mode = "LAB") {
@@ -28,6 +34,23 @@ export class GameEngine {
     this.rigidBodies = new RigidBodySystem();
     this.water = new WaterSolver(this.terrain, this.atmosphere, this.particles);
     this.surfaceWaves = new SurfaceWaveSolver(this.water, this.atmosphere);
+    this.particles.setSurfaceWaves?.(this.surfaceWaves);
+    this.waterImpactCoupler = new WaterImpactCoupler({
+      water: this.water,
+      surfaceWaves: this.surfaceWaves,
+      particles: this.particles,
+      diagnostics: this.water.diagnostics
+    });
+    this.wakeGenerator = new WakeGenerator({ surfaceWaves: this.surfaceWaves, water: this.water });
+    this.fluidRigidBodyCoupler = new FluidRigidBodyCoupler({
+      water: this.water,
+      impactCoupler: this.waterImpactCoupler,
+      wakeGenerator: this.wakeGenerator
+    });
+    this.rigidBodies.setFluidCoupler?.(this.fluidRigidBodyCoupler);
+    this.fluidStructureCoupler = new FluidStructureCoupler({ water: this.water });
+    this.splashEmitter = new SplashEmitter(this.particles);
+    this.spraySystem = new SpraySystem({ particles: this.particles });
     this.erosion = new ErosionSystem(this.terrain, this.water, this.surfaceWaves, this.particles);
     this.moisture = new MoistureSystem(this.terrain, this.water, this.atmosphere);
     this.granular = new GranularSystem(this.terrain, this.particles);
@@ -55,7 +78,7 @@ export class GameEngine {
     this.keysDown = new Set();
     this.pointerMode = "tool";
     this.lastStructuralDragCell = null;
-    this.debug = { grid: false, velocity: false, pressure: false, sediment: false, moisture: false };
+    this.debug = { grid: false, velocity: false, pressure: false, sediment: false, moisture: false, waterPhysics: false };
     this.game = this.mode === "LAB" ? new LabApplication(this) : new Game(this);
     this.destroyed = false;
     this.frameHandle = 0;
@@ -144,10 +167,12 @@ export class GameEngine {
       if (event.target?.matches?.("input, select, textarea")) return;
       this.keysDown.add(event.code);
 
-      const match = /^F([1-9]|10|11)$/.exec(event.key);
+      const match = /^F([1-9]|10|11|12)$/.exec(event.key);
       if (match) {
         event.preventDefault();
-        this.game?.setOverlayByIndex(Number(match[1]) - 1);
+        const index = Number(match[1]);
+        if (index === 12) this.debug.waterPhysics = !this.debug.waterPhysics;
+        else this.game?.setOverlayByIndex(index - 1);
         return;
       }
 
@@ -258,7 +283,10 @@ export class GameEngine {
       if (!initialClick) return;
       this.water.addImpulse(x, -1.35);
       this.surfaceWaves.addImpulse(x, 1.9);
-      this.particles.spawnSplash(x, this.water.surfaceYAtX(x), 1.6);
+      this.splashEmitter.emit(x, this.water.surfaceYAtX(x), {
+        impactEnergy: 18000,
+        impactVelocity: 3.2
+      });
       return;
     }
     if (this.tool === TOOLS.DEBRIS) {
@@ -440,8 +468,12 @@ export class GameEngine {
       depth: this.water.h[wi] / 48,
       velocity: this.water.velocityAtIndex(wi) / 48,
       pressure: this.water.pressure[wi],
+      dynamicPressure: this.water.dynamicPressure?.[wi] || 0,
+      bedShear: this.water.bedShear?.[wi] || 0,
       sediment: this.water.sediment[wi],
       breaking: this.water.breaking[wi],
+      foam: this.water.foam?.[wi] || 0,
+      wetDryState: this.water.wetDry?.state?.[wi] ?? 0,
       building: this.game?.inspectAt?.(x, y) || null,
       construction: this.game?.inspectConstructionAt?.(x, y) || null
     };
@@ -494,6 +526,7 @@ export class GameEngine {
       erodedCells: this.terrain.erodedCells,
       bodies: this.rigidBodies.bodies.length,
       particles: this.particles.items.length,
+      waterDiagnostics: this.water.diagnosticSnapshot?.() || null,
       inspection: this.getInspection(),
       camera: this.camera.snapshot(),
       minimap: this.getMiniMapData(),
