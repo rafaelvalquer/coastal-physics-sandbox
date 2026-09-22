@@ -292,7 +292,14 @@ export class Game {
       if (messages[phase]) this.state.pushMessage(messages[phase][0], messages[phase][1]);
       if (phase === "FORECAST" && this.tutorial.current === "OPEN_FORECAST") this.tutorial.complete();
     });
-    this.eventBus.on("coast:overtopping", ({ constructionId, severity, location, landwardDepth }) => {
+    this.eventBus.on("coast:overtopping", ({ constructionId, severity, location, landwardDepth, discharge }) => {
+      if (location) {
+        this.engine.particles?.spawnSplash?.(
+          location.x,
+          location.y - 8,
+          Math.min(2.6, 0.8 + discharge * 2.2)
+        );
+      }
       if (severity === "HIGH" || severity === "CRITICAL") {
         this.state.pushMessage(
           "Água ultrapassando " + constructionId + " · " + landwardDepth.toFixed(2) + " m atrás da defesa",
@@ -436,6 +443,31 @@ export class Game {
       occupants: building.occupants,
       capacity: building.capacity,
       foundation: { ...building.foundation }
+    };
+  }
+
+  inspectConstructionAt(x, y) {
+    const construction = this.constructions.list().find((candidate) => {
+      const halfWidth = Math.max(12, Math.min(180, candidate.length * 6));
+      return (
+        x >= candidate.x - halfWidth &&
+        x <= candidate.x + halfWidth &&
+        Math.abs(y - candidate.y) <= 34
+      );
+    });
+    if (!construction) return null;
+    return {
+      id: construction.id,
+      type: construction.type,
+      x: construction.x,
+      y: construction.y,
+      length: construction.length,
+      condition: construction.condition,
+      operational: construction.operational,
+      foundationExposure: construction.foundationExposure,
+      overflowing: construction.overflowing || false,
+      overtopping: construction.overtopping || null,
+      effectiveness: construction.effectiveness || null
     };
   }
 
