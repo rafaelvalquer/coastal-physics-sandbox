@@ -1,0 +1,2 @@
+const ITEMS=[["MAX_FLOOD_DEPTH","Prof. máxima"],["MAX_VELOCITY","Velocidade"],["FLOOD_DURATION","Duração"],["WAVE_ENERGY","Energia"],["EROSION","Erosão"],["BUILDING_DAMAGE","Danos"]];
+export function LabOverlayRail({engine,snapshot}){return <div className="lab-overlay-rail"><small>HEATMAPS</small>{ITEMS.map(([id,label])=><button key={id} className={snapshot?.overlay===id?"active":""} onClick={()=>engine?.game?.commandBus?.execute("lab:overlay",{overlay:id})}>{label}</button>)}</div>;}
