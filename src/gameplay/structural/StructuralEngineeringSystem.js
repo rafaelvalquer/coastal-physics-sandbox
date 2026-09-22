@@ -214,7 +214,14 @@ export class StructuralEngineeringSystem {
 
   assemblySnapshot(a){return {id:a.id,type:"STRUCTURAL_ASSEMBLY",blockCount:a.blocks.length,totalMass:a.totalMass,centerOfMass:{...a.centerOfMass},bounds:a.bounds?{...a.bounds}:null,baseWidth:a.baseWidthMeters,height:a.heightMeters,condition:a.condition,integrity:a.integrity,rotation:a.rotation,displacementX:a.displacementX,failed:a.failed,failureMode:a.failureMode,stability:a.stability,foundations:this.foundation.forAssembly(a.id).map(e=>e.serialize())};}
 
-  snapshot(){return {blocks:[...this.blocks.values()].map(b=>b.serialize()),assemblies:[...this.assemblies.values()].map(a=>this.assemblySnapshot(a)),foundations:this.foundation.serialize(),workforce:this.workforce.snapshot(),jobs:this.queue.serialize().map(j=>({...j,remainingHours:this.queue.get(j.id)?.remainingHours?.()??0})),resources:this.inventory.snapshot(),selectedTool:this.planner.selectedType};}
+  snapshot(){
+    const jobs=this.queue.serialize().map(j=>({...j,remainingHours:this.queue.get(j.id)?.remainingHours?.()??0}));
+    const workforce=this.workforce.snapshot();
+    workforce.maintenance=jobs.filter(j=>j.type==="REPAIR"&&!["COMPLETED","CANCELLED","FAILED"].includes(j.state)).reduce((s,j)=>s+(j.assignedWorkers||0),0);
+    workforce.emergency=jobs.filter(j=>j.priority==="EMERGENCY"&&!["COMPLETED","CANCELLED","FAILED"].includes(j.state)).reduce((s,j)=>s+(j.assignedWorkers||0),0);
+    workforce.construction=jobs.filter(j=>j.type!=="REPAIR"&&j.priority!=="EMERGENCY"&&!["COMPLETED","CANCELLED","FAILED"].includes(j.state)).reduce((s,j)=>s+(j.assignedWorkers||0),0);
+    return {blocks:[...this.blocks.values()].map(b=>b.serialize()),assemblies:[...this.assemblies.values()].map(a=>this.assemblySnapshot(a)),foundations:this.foundation.serialize(),workforce,jobs,resources:this.inventory.snapshot(),selectedTool:this.planner.selectedType};
+  }
 
   serialize(){return {grid:this.grid.serialize(),blocks:[...this.blocks.values()].map(b=>b.serialize()),graph:this.graph.serialize(),assemblies:[...this.assemblies.values()].map(a=>a.serialize()),foundation:this.foundation.serialize(),workforce:this.workforce.serialize(),jobs:this.queue.serialize(),resources:this.inventory.serialize()};}
 
