@@ -61,6 +61,7 @@ export function SimulationLabDrawer({ engine, stats }) {
   const chooseTool = (value) => {
     setTool(value);
     engine?.game?.clearConstruction?.();
+    engine?.game?.commandBus?.execute("structural:cancel");
     engine?.setTool?.(value);
   };
 
