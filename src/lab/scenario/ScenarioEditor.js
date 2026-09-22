@@ -5,7 +5,7 @@ import { ScenarioSerializer } from "./ScenarioSerializer.js";
 
 export class ScenarioEditor{
  constructor({engine,buildings,constructions,eventBus}){
-  Object.assign(this,{engine,buildings,constructions,eventBus});this.activeCategory="INSPECT";this.activeTool="INSPECT";this.brush=2;this.dragStart=null;this.dragCurrent=null;this.sequence=1;this.roads=[];this.spent=0;this.usedTools=new Set();this.budgetLimit=null;this.template=null;
+  Object.assign(this,{engine,buildings,constructions,eventBus});this.activeCategory="INSPECT";this.activeTool="INSPECT";this.brush=2;this.dragStart=null;this.dragCurrent=null;this.sequence=1;this.roads=[];this.spent=0;this.usedTools=new Set();this.budgetLimit=null;this.template=null;this.seed=48212;
  }
  select(category,tool){this.activeCategory=category;this.activeTool=tool;this.dragStart=null;this.dragCurrent=null;}
  clearTool(){this.select("INSPECT","INSPECT");}
@@ -18,7 +18,7 @@ export class ScenarioEditor{
   else if(row>top){for(let y=top;y<row;y++)t.setCell(col,y,MATERIALS.AIR.id,0,0);}
  }
  applyTerrainPreset(preset){
-  const t=this.engine.terrain;t.generateIsland();
+  const t=this.engine.terrain;t.generateIsland(this.seed);
   for(let col=0;col<t.cols;col++){const x=(col+.5)*t.cellSize;
    if(preset==="LOW"&&x>=610&&x<=1160)this.shapeColumn(col,421+Math.sin(x*.022)*3,MATERIALS.SOIL);
    else if(preset==="HARBOR"&&x>=600&&x<=1120)this.shapeColumn(col,x<760?426:375,MATERIALS.CONCRETE);
@@ -60,6 +60,7 @@ export class ScenarioEditor{
   return null;
  }
  pointerMove(x,y){if(this.activeCategory==="TERRAIN")this.applyTerrainTool(x,y);if(this.dragStart)this.dragCurrent={x,y};}
- pointerUp(x,y){if(!this.dragStart)return null;const start=this.dragStart,end={x,y};this.dragStart=null;this.dragCurrent=null;if(this.activeTool==="ROAD")return this.placeRoad(start,end);const mapped=this.activeTool==="CHANNEL"?"DRAINAGE":this.activeTool;return this.placeDefense(mapped,start,end);}
- snapshot(){return {category:this.activeCategory,tool:this.activeTool,brush:this.brush,dragStart:this.dragStart,dragCurrent:this.dragCurrent,template:this.template?.id||null,spent:this.spent,budgetLimit:this.budgetLimit,usedTools:[...this.usedTools],roads:structuredClone(this.roads)};}
+ carveChannel(start,end){const t=this.engine.terrain,minX=Math.min(start.x,end.x),maxX=Math.max(start.x,end.x),length=Math.max(24,maxX-minX),cost=length*18;if(!this.canSpend(cost))return {ok:false,reason:"Orçamento do desafio excedido"};for(let x=minX;x<=maxX;x+=t.cellSize){const col=t.worldToCell(x,0).x,top=t.columnTopCell(col);if(top>=t.rows)continue;this.shapeColumn(col,(top+2)*t.cellSize,MATERIALS.SAND);}this.engine.water.refreshBed();this.spent+=cost;this.usedTools.add("CHANNEL");return {ok:true,cost};}
+ pointerUp(x,y){if(!this.dragStart)return null;const start=this.dragStart,end={x,y};this.dragStart=null;this.dragCurrent=null;if(this.activeTool==="ROAD")return this.placeRoad(start,end);if(this.activeTool==="CHANNEL")return this.carveChannel(start,end);return this.placeDefense(this.activeTool,start,end);}
+ snapshot(){return {category:this.activeCategory,tool:this.activeTool,brush:this.brush,dragStart:this.dragStart,dragCurrent:this.dragCurrent,template:this.template?.id||null,seed:this.seed,spent:this.spent,budgetLimit:this.budgetLimit,usedTools:[...this.usedTools],roads:structuredClone(this.roads)};}
 }
