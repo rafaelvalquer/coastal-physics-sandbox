@@ -89,11 +89,12 @@ export class GameEngine {
 
         const point = this.renderer.clientToWorld(event.clientX, event.clientY);
         Object.assign(this.pointer, point, { inside: true });
+        const structuralDrag = Boolean(this.game?.structuralEngineering?.planner?.selectedType);
         if (
           this.pointer.down &&
           this.tool !== TOOLS.IMPULSE &&
           this.tool !== TOOLS.DEBRIS &&
-          this.tool !== TOOLS.INSPECT
+          (this.tool !== TOOLS.INSPECT || structuralDrag)
         ) {
           this.applyTool(point.x, point.y, false);
         }
