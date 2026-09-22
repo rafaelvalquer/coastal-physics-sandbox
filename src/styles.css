@@ -897,3 +897,36 @@ input[type="range"] { width: 100%; accent-color: #25a5c2; }
 @media (max-width: 899px) {
   .storm-timeline { display: none; }
 }
+
+
+.defense-inspector {
+  margin-bottom: 12px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid rgba(66, 101, 118, .32);
+}
+.defense-risk {
+  display: grid;
+  gap: 4px;
+  margin: 9px 0;
+  padding: 7px;
+  border: 1px solid #23404e;
+  border-radius: 8px;
+  background: rgba(10, 25, 33, .72);
+}
+.defense-risk small { color: #718f9b; font-size: 6px; letter-spacing: .09em; }
+.defense-risk strong { color: #cfe8ed; font-size: 14px; }
+.defense-risk > div {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #0c222c;
+}
+.defense-risk > div span {
+  display: block;
+  height: 100%;
+  background: #55bb8e;
+}
+.defense-risk.warning { border-color: rgba(204,154,61,.48); }
+.defense-risk.warning > div span { background: #d3ad4e; }
+.defense-risk.critical { border-color: rgba(206,76,68,.58); }
+.defense-risk.critical > div span { background: #d75d54; }
