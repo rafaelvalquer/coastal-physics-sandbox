@@ -13,13 +13,15 @@ import { ParticleSystem } from './particles/ParticleSystem.js';
 import { Renderer } from './rendering/Renderer.js';
 import { clamp } from './utils/math.js';
 import { Game } from '../core/Game.js';
+import { LabApplication } from '../lab/application/LabApplication.js';
 import { WorldCamera } from '../gameplay/camera/WorldCamera.js';
 import { CameraController } from '../gameplay/camera/CameraController.js';
 
 export class GameEngine {
-  constructor(canvas, onStats) {
+  constructor(canvas, onStats, mode = "LAB") {
     this.canvas = canvas;
     this.onStats = onStats;
+    this.mode = mode;
     this.terrain = new TerrainGrid();
     this.particles = new ParticleSystem();
     this.atmosphere = new AtmosphereSystem();
@@ -54,7 +56,7 @@ export class GameEngine {
     this.pointerMode = "tool";
     this.lastStructuralDragCell = null;
     this.debug = { grid: false, velocity: false, pressure: false, sediment: false, moisture: false };
-    this.game = new Game(this);
+    this.game = this.mode === "LAB" ? new LabApplication(this) : new Game(this);
     this.destroyed = false;
     this.frameHandle = 0;
 
@@ -79,7 +81,8 @@ export class GameEngine {
         const point = this.renderer.clientToWorld(event.clientX, event.clientY);
         Object.assign(this.pointer, point, { inside: true, down: true });
         this.pointerMode = "tool";
-        this.applyTool(point.x, point.y, true);
+        if (this.mode === "LAB") this.game?.handlePointerDown?.(point.x, point.y);
+        else this.applyTool(point.x, point.y, true);
       },
       pointermove: (event) => {
         if (this.pointerMode === "pan" && this.cameraController.dragging) {
@@ -89,6 +92,10 @@ export class GameEngine {
 
         const point = this.renderer.clientToWorld(event.clientX, event.clientY);
         Object.assign(this.pointer, point, { inside: true });
+        if (this.mode === "LAB") {
+          if (this.pointer.down) this.game?.handlePointerMove?.(point.x, point.y);
+          return;
+        }
         const structuralDrag = Boolean(this.game?.structuralEngineering?.planner?.selectedType);
         if (
           this.pointer.down &&
@@ -100,6 +107,9 @@ export class GameEngine {
         }
       },
       pointerup: () => {
+        if (this.mode === "LAB" && this.pointer.down) {
+          this.game?.handlePointerUp?.(this.pointer.x, this.pointer.y);
+        }
         this.pointer.down = false;
         this.pointerMode = "tool";
         this.lastStructuralDragCell = null;
@@ -151,7 +161,8 @@ export class GameEngine {
         event.preventDefault();
         this.camera.zoomBy(1 / 1.12);
       } else if (event.code === "Escape") {
-        this.game?.clearConstruction?.();
+        if (this.mode === "LAB") this.game?.editor?.clearTool?.();
+        else this.game?.clearConstruction?.();
       }
     };
 
@@ -402,12 +413,15 @@ export class GameEngine {
     this.particles.items = [];
     this.atmosphere.hydrate({ time: 0, wind: 8, gustiness: 0.28, rain: 0, tide: 0 });
     this.simTime = 0;
-    this.game = new Game(this, scenarioId, difficulty);
+    this.game = this.mode === "LAB"
+      ? new LabApplication(this)
+      : new Game(this, scenarioId, difficulty);
     this.focusGameplay();
     this.spawnInitialDebris();
   }
 
   loadScenario(scenarioId, difficulty = "NORMAL") {
+    if (this.mode === "LAB") return this.game?.loadTemplate?.(scenarioId) || null;
     this.resetWorld(scenarioId, difficulty);
     return this.game.snapshot();
   }
@@ -489,8 +503,10 @@ export class GameEngine {
 
   serialize() {
     return {
-      version: 2,
-      saveVersion: 1,
+      version: 3,
+      saveVersion: this.mode === "LAB" ? 3 : 2,
+      type: this.mode === "LAB" ? "LAB_ENGINE_STATE" : "LEGACY_GAME_STATE",
+      mode: this.mode,
       simTime: this.simTime,
       simulationSpeed: this.simulationSpeed,
       terrain: this.terrain.serialize(),
@@ -507,6 +523,10 @@ export class GameEngine {
 
   hydrate(state) {
     if (!state) return;
+    if (state.mode && state.mode !== this.mode) {
+      this.mode = state.mode;
+      this.game = this.mode === "LAB" ? new LabApplication(this) : new Game(this);
+    }
     this.terrain.hydrate(state.terrain);
     this.atmosphere.hydrate(state.atmosphere);
     this.water.hydrate(state.water);
@@ -515,12 +535,16 @@ export class GameEngine {
     this.rigidBodies.hydrate(state.rigidBodies);
     this.particles.hydrate(state.particles);
     this.camera.hydrate(state.camera || {});
-    const scenarioId = state.gameplay?.scenarioId || this.game?.scenario?.id || "porto-esperanca";
-    const difficulty = state.gameplay?.difficulty?.level || this.game?.difficulty?.level || "NORMAL";
-    if (this.game?.scenario?.id !== scenarioId || this.game?.difficulty?.level !== difficulty) {
-      this.game = new Game(this, scenarioId, difficulty);
+    if (this.mode === "LAB") {
+      this.game?.hydrate?.(state.gameplay || {});
+    } else {
+      const scenarioId = state.gameplay?.scenarioId || this.game?.scenario?.id || "porto-esperanca";
+      const difficulty = state.gameplay?.difficulty?.level || this.game?.difficulty?.level || "NORMAL";
+      if (this.game?.scenario?.id !== scenarioId || this.game?.difficulty?.level !== difficulty) {
+        this.game = new Game(this, scenarioId, difficulty);
+      }
+      this.game?.hydrate?.(state.gameplay || {});
     }
-    this.game?.hydrate?.(state.gameplay || {});
     this.simTime = Number(state.simTime || 0);
     this.simulationSpeed = clamp(Number(state.simulationSpeed || 1), 0.25, 8);
   }
