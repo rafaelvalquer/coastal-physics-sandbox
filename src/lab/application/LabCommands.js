@@ -3,6 +3,7 @@ export function bindLabCommands(app){
  c.register("lab:set-tool",({category,tool})=>{app.editor.select(category,tool);return {ok:true};});
  c.register("lab:set-brush",({size})=>{app.editor.brush=Math.max(1,Math.min(7,Number(size)||2));return {ok:true};});
  c.register("lab:set-template",({id})=>app.loadTemplate(id));
+ c.register("lab:set-seed",({seed})=>{const value=Math.max(1,Math.floor(Number(seed)||1));app.experiments.edit(e=>{e.map.seed=value;});app.editor.seed=value;app.loadTemplate(app.experiments.current.map.template);return {ok:true,seed:value};});
  c.register("lab:disaster",({partial})=>{app.experiments.edit(e=>Object.assign(e.disaster,partial));app.disasterController.configure(partial);return {ok:true};});
  c.register("lab:preset",({id})=>{const d=app.disasterController.applyPreset(id);if(!d)return {ok:false};app.experiments.current.disaster=d;app.experiments.dirty=true;return {ok:true};});
  c.register("lab:environment",({partial})=>{app.experiments.edit(e=>Object.assign(e.environment,partial||{}));return {ok:true};});
