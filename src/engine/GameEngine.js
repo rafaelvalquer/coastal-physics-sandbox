@@ -210,6 +210,7 @@ export class GameEngine {
     this.structural.update(dt);
     this.rigidBodies.update(dt, this.water, this.terrain);
     this.particles.update(dt, this.water, this.terrain);
+    this.game?.postPhysicsUpdate?.(dt);
   }
 
   spawnInitialDebris() {
