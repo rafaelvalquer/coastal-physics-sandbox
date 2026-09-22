@@ -16,7 +16,14 @@ export class BlockConnectionSystem {
     }
     for(const id of ids){
       const other=this.blocks.get(id);
-      if(other)this.graph.connect(block.id,other.id,this.inferType(block,other));
+      if(other){
+        const connection=this.graph.connect(block.id,other.id,this.inferType(block,other));
+        if(connection.type==="INTERLOCK"){
+          const interlock=((block.interlock||0)+(other.interlock||0))/2;
+          connection.strength=Math.max(connection.strength,0.45+interlock*0.5);
+          connection.shear=Math.max(connection.shear,0.55+interlock*0.42);
+        }
+      }
     }
   }
   breakWeakConnections(blockId,threshold=.45){
