@@ -1,5 +1,6 @@
 import { FOUNDATION_TYPES } from "../../data/foundations.js";
 import { SoilBearingSolver } from "./SoilBearingSolver.js";
+import { FoundationBearingSolver } from "./FoundationBearingSolver.js";
 import { FoundationElement } from "./FoundationElement.js";
 import { Pile } from "./Pile.js";
 import { RockAnchor } from "./RockAnchor.js";
@@ -35,7 +36,7 @@ export class StructuralFoundationSystem {
     const bw=Math.max(.5,a.baseWidthMeters);const bearing=SoilBearingSolver.materialCapacity(soil.material,soil.moisture)*1000*bw*bearingMultiplier;const under=Math.max(0,soil.moisture-.55)*bw*12000;
     return {soil,soilFactor:Math.max(.45,(soil.integrity||.5)*frictionMultiplier),bearingCapacity:bearing,underPressure:under,pileHorizontal,pileVertical,pileMoment,anchorHorizontal,anchorVertical,anchorMoment};
   }
-  solveBearing(a,f){const resistance=Math.max(1,f.bearingCapacity+f.pileVertical*.35),demand=Math.max(1,f.weight-f.buoyancy),factor=resistance/demand;return {factor,resistance,demand,state:factor>=1.5?"SAFE":factor>=1.2?"WARNING":factor>=1?"CRITICAL":"FAILING"};}
+  solveBearing(a,f){return FoundationBearingSolver.solve(f);}
   update(dt){for(const e of this.elements.values()){if(e.integrity<=0)continue;const c=this.terrain.worldToCell(e.x,e.y),top=this.terrain.columnTopCell(c.x);if(top>=this.terrain.rows)continue;const idx=this.terrain.index(c.x,top),integrity=this.terrain.integrity[idx]||0,moisture=this.terrain.moisture[idx]||0;if(integrity<.25||moisture>.92)e.integrity=Math.max(0,e.integrity-dt*(.001+Math.max(0,moisture-.92)*.006));}}
   serialize(){return [...this.elements.values()].map(e=>e.serialize());}
   hydrate(v=[]){this.elements.clear();for(const raw of v){let e;if(raw.kind==="PILE")e=new Pile(raw);else if(raw.kind==="ANCHOR")e=new RockAnchor(raw);else if(raw.kind==="TIEBACK")e=new Tieback(raw);else e=new FoundationElement(raw);this.elements.set(e.id,e);this.grid.occupyFoundation(e);}}
