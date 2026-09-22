@@ -1,0 +1,1 @@
+export class MetricSeries{constructor(name){this.name=name;this.points=[];}push(time,value){this.points.push({time,value});}get peak(){return this.points.length?Math.max(...this.points.map(p=>Number(p.value)||0)):0;}get latest(){return this.points.at(-1)?.value??0;}serialize(){return {name:this.name,points:this.points.map(p=>({...p}))};}}

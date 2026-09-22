@@ -1,0 +1,1 @@
+export class RunResult{constructor(v={}){Object.assign(this,v);this.id=v.id||"run-"+Date.now().toString(36);this.createdAt=v.createdAt||Date.now();}serialize(){return JSON.parse(JSON.stringify(this));}}
