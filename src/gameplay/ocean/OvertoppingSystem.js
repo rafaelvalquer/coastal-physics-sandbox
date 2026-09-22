@@ -1,5 +1,5 @@
 const PX_PER_METER = 48;
-const BARRIER_TYPES = new Set(["CONCRETE_WALL", "RIPRAP", "DUNE"]);
+const BARRIER_TYPES = new Set(["CONCRETE_WALL", "RIPRAP", "DUNE", "STRUCTURAL_ASSEMBLY"]);
 
 export class OvertoppingSystem {
   constructor({ water, constructions, eventBus }) {
@@ -14,11 +14,23 @@ export class OvertoppingSystem {
   update(dt) {
     this.activeCount = 0;
     for (const construction of this.constructions.list()) {
-      if (!construction.operational || !BARRIER_TYPES.has(construction.type)) continue;
+      const operational = construction.type === "STRUCTURAL_ASSEMBLY"
+        ? !construction.failed && construction.condition > 0.05
+        : construction.operational;
+      if (!operational || !BARRIER_TYPES.has(construction.type)) continue;
 
-      const halfSpan = Math.max(8, Math.min(180, construction.length * 6));
-      const center = Math.max(0, Math.min(this.water.n - 1, Math.floor(construction.x / this.water.dx)));
-      const landward = Math.max(0, Math.min(this.water.n - 1, Math.floor((construction.x + halfSpan + 8) / this.water.dx)));
+      const structural = construction.type === "STRUCTURAL_ASSEMBLY";
+      const centerX = structural
+        ? ((construction.bounds?.minX || 0) + (construction.bounds?.maxX || 0)) / 2
+        : construction.x;
+      const centerY = structural
+        ? construction.bounds?.maxY || construction.centerOfMass?.y || 0
+        : construction.y;
+      const halfSpan = structural
+        ? Math.max(8, ((construction.bounds?.maxX || centerX) - (construction.bounds?.minX || centerX)) / 2)
+        : Math.max(8, Math.min(180, construction.length * 6));
+      const center = Math.max(0, Math.min(this.water.n - 1, Math.floor(centerX / this.water.dx)));
+      const landward = Math.max(0, Math.min(this.water.n - 1, Math.floor((centerX + halfSpan + 8) / this.water.dx)));
 
       const crestElevation = this.water.bed[center];
       const freeSurface = this.water.bed[center] + this.water.h[center];
@@ -55,7 +67,7 @@ export class OvertoppingSystem {
           constructionId: construction.id,
           discharge,
           severity: record.severity,
-          location: { x: construction.x, y: construction.y },
+          location: { x: centerX, y: centerY },
           landwardDepth
         });
       }

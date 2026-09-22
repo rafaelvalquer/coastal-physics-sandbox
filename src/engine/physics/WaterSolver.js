@@ -37,6 +37,7 @@ export class WaterSolver {
     this.kineticEnergy = 0;
     this.waveEnergy = 0;
     this.offshoreBoundary = null;
+    this.structuralObstacles = [];
     this.refreshBed();
     this.resetWater();
   }
@@ -46,6 +47,19 @@ export class WaterSolver {
       const x = (i + 0.5) * this.dx;
       const bedY = this.terrain.columnTopWorldYAt(x);
       this.bed[i] = WORLD.height - bedY;
+    }
+
+    for (const obstacle of this.structuralObstacles || []) {
+      const progress = Math.max(0, Math.min(1, obstacle.progress ?? 1));
+      if (progress <= 0.02) continue;
+      const permeability = Math.max(0, Math.min(1, obstacle.permeability ?? 0));
+      const effective = progress * (1 - permeability * 0.55);
+      const crest = Math.max(0, (WORLD.height - obstacle.topY) * effective);
+      const first = Math.max(0, Math.floor(obstacle.minX / this.dx));
+      const last = Math.min(this.n - 1, Math.ceil(obstacle.maxX / this.dx));
+      for (let i = first; i <= last; i++) {
+        this.bed[i] = Math.max(this.bed[i], crest);
+      }
     }
   }
 
@@ -106,6 +120,10 @@ export class WaterSolver {
 
   setOffshoreBoundary(value = null) {
     this.offshoreBoundary = value ? { ...value } : null;
+  }
+
+  setStructuralObstacles(obstacles = []) {
+    this.structuralObstacles = obstacles.map((item) => ({ ...item }));
   }
 
   update(dt) {

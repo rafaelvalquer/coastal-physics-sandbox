@@ -1,56 +1,47 @@
+import { StructuralInspector } from "./StructuralInspector.jsx";
+
 export function InspectorPanel({ inspection, engine }) {
   if (!inspection) {
-    return <p className="inspector-empty">Clique em um prédio, defesa ou terreno para inspecionar.</p>;
+    return <p className="inspector-empty">Clique em um prédio, estrutura, defesa ou terreno para inspecionar.</p>;
   }
 
   const building = inspection.building;
   const construction = inspection.construction;
-  const effectiveness = construction?.effectiveness;
+  const isStructural = construction?.type === "STRUCTURAL_ASSEMBLY";
+  const effectiveness = !isStructural ? construction?.effectiveness : null;
 
   function repairBuilding() {
     if (!building?.id) return;
-    engine?.game?.commandBus?.execute("building:repair", {
-      id: building.id,
-      amount: 25,
-      cost: 1500
-    });
+    engine?.game?.commandBus?.execute("building:repair", { id: building.id, amount: 25, cost: 1500 });
   }
 
   function repairDefense() {
     if (!construction?.id) return;
-    engine?.game?.commandBus?.execute("construction:repair", {
-      id: construction.id,
-      amount: 0.25,
-      cost: 1200
-    });
+    engine?.game?.commandBus?.execute("construction:repair", { id: construction.id, amount: 0.25, cost: 1200 });
   }
 
   function evacuate() {
     if (!building?.id) return;
-    engine?.game?.commandBus?.execute("evacuation:building", {
-      buildingId: building.id,
-      type: "MANDATORY"
-    });
+    engine?.game?.commandBus?.execute("evacuation:building", { buildingId: building.id, type: "MANDATORY" });
   }
 
   function prioritizePower() {
     if (!building?.id) return;
-    engine?.game?.commandBus?.execute("utility:prioritize-power", {
-      buildingId: building.id
-    });
+    engine?.game?.commandBus?.execute("utility:prioritize-power", { buildingId: building.id });
   }
 
   const canPrioritize = ["HOSPITAL", "CITY_HALL", "POWER_PLANT", "PORT"].includes(building?.type);
 
   return (
     <div className="game-card inspector-card">
-      {construction && (
+      {isStructural && <StructuralInspector assembly={construction} engine={engine} />}
+
+      {construction && !isStructural && (
         <section className="defense-inspector">
           <div className="game-inspected-building">
             <strong>{construction.type}</strong>
             <span>{construction.id}</span>
           </div>
-
           <div className="game-data-list">
             <span>Condição</span><b>{Math.round((construction.condition || 0) * 100)}%</b>
             <span>Comprimento</span><b>{construction.length} m</b>
@@ -58,7 +49,6 @@ export function InspectorPanel({ inspection, engine }) {
             <span>Estado</span><b>{construction.operational ? "OPERACIONAL" : "FALHA"}</b>
             <span>Overtopping</span><b>{construction.overtopping?.active ? "ATIVO" : "não"}</b>
           </div>
-
           {effectiveness && (
             <>
               <div className={"defense-risk " + effectiveness.riskLabel.toLowerCase()}>
@@ -70,22 +60,17 @@ export function InspectorPanel({ inspection, engine }) {
                 <span>Redução de onda</span><b>{Math.round(effectiveness.waveReduction * 100)}%</b>
                 <span>Altura remanescente</span><b>{effectiveness.remainingHeight.toFixed(1)} m</b>
                 <span>Risco da fundação</span><b>{Math.round(effectiveness.foundationRisk * 100)}%</b>
-                <span>Reflexão</span><b>{Math.round(effectiveness.reflection * 100)}%</b>
               </div>
             </>
           )}
-
-          {construction.condition < 1 && (
-            <button className="game-repair-button" onClick={repairDefense}>Reparar defesa $1.200</button>
-          )}
+          {construction.condition < 1 && <button className="game-repair-button" onClick={repairDefense}>Reparar defesa legacy</button>}
         </section>
       )}
 
       {building && (
         <>
           <div className="game-inspected-building">
-            <strong>{building.type}</strong>
-            <span>{building.id}</span>
+            <strong>{building.type}</strong><span>{building.id}</span>
           </div>
           <div className="game-data-list">
             <span>Integridade</span><b>{Math.round(building.integrityRatio * 100)}%</b>
@@ -93,17 +78,10 @@ export function InspectorPanel({ inspection, engine }) {
             <span>Ocupação</span><b>{building.occupants} / {building.capacity}</b>
             <span>Estado</span><b>{building.operational ? "ONLINE" : "INOPERANTE"}</b>
           </div>
-
           <div className="inspector-actions">
-            {building.integrityRatio < 1 && (
-              <button className="game-repair-button" onClick={repairBuilding}>Reparar $1.500</button>
-            )}
-            {building.occupants > 0 && (
-              <button onClick={evacuate}>Evacuar moradores</button>
-            )}
-            {canPrioritize && (
-              <button onClick={prioritizePower}>Priorizar energia</button>
-            )}
+            {building.integrityRatio < 1 && <button className="game-repair-button" onClick={repairBuilding}>Reparar $1.500</button>}
+            {building.occupants > 0 && <button onClick={evacuate}>Evacuar moradores</button>}
+            {canPrioritize && <button onClick={prioritizePower}>Priorizar energia</button>}
           </div>
         </>
       )}

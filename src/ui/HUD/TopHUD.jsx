@@ -50,6 +50,10 @@ export function TopHUD({ engine, snapshot }) {
           <small>Resiliência</small>
           <b>{snapshot.resilience || 0}%</b>
         </button>
+        <button className="hud-metric" onClick={() => dispatch({ type: "TOGGLE_PANEL", panel: "CITY" })}>
+          <small>Trabalhadores</small>
+          <b>{snapshot.structuralEngineering?.workforce?.available ?? 0} livres</b>
+        </button>
         <button className={storm ? "hud-alert warning" : "hud-alert"} onClick={() => dispatch({ type: "TOGGLE_PANEL", panel: "WEATHER" })}>
           <small>Clima</small>
           <b>{alert}</b>

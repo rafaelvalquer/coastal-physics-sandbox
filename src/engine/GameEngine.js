@@ -52,6 +52,7 @@ export class GameEngine {
     this.pointer = { x: 0, y: 0, inside: false, down: false };
     this.keysDown = new Set();
     this.pointerMode = "tool";
+    this.lastStructuralDragCell = null;
     this.debug = { grid: false, velocity: false, pressure: false, sediment: false, moisture: false };
     this.game = new Game(this);
     this.destroyed = false;
@@ -88,11 +89,12 @@ export class GameEngine {
 
         const point = this.renderer.clientToWorld(event.clientX, event.clientY);
         Object.assign(this.pointer, point, { inside: true });
+        const structuralDrag = Boolean(this.game?.structuralEngineering?.planner?.selectedType);
         if (
           this.pointer.down &&
           this.tool !== TOOLS.IMPULSE &&
           this.tool !== TOOLS.DEBRIS &&
-          this.tool !== TOOLS.INSPECT
+          (this.tool !== TOOLS.INSPECT || structuralDrag)
         ) {
           this.applyTool(point.x, point.y, false);
         }
@@ -100,6 +102,7 @@ export class GameEngine {
       pointerup: () => {
         this.pointer.down = false;
         this.pointerMode = "tool";
+        this.lastStructuralDragCell = null;
         this.cameraController.endDrag();
       },
       pointercancel: () => {
@@ -131,7 +134,7 @@ export class GameEngine {
       if (event.target?.matches?.("input, select, textarea")) return;
       this.keysDown.add(event.code);
 
-      const match = /^F([1-9]|10)$/.exec(event.key);
+      const match = /^F([1-9]|10|11)$/.exec(event.key);
       if (match) {
         event.preventDefault();
         this.game?.setOverlayByIndex(Number(match[1]) - 1);
@@ -219,6 +222,19 @@ export class GameEngine {
   }
 
   applyTool(x, y, initialClick) {
+    if (this.game?.structuralEngineering?.planner?.selectedType) {
+      const cell = this.game.structuralEngineering.grid.worldToCell(x, y);
+      const key = cell.x + ":" + cell.y;
+      if (initialClick || (this.pointer.down && key !== this.lastStructuralDragCell)) {
+        this.lastStructuralDragCell = key;
+        this.game.handleWorldClick(x, y);
+      }
+      return;
+    }
+    if (this.game?.structuralEngineering?.selectedAction) {
+      if (initialClick) this.game.handleWorldClick(x, y);
+      return;
+    }
     if (this.game?.state.selectedConstruction) {
       if (initialClick) this.game.handleWorldClick(x, y);
       return;
@@ -241,6 +257,9 @@ export class GameEngine {
     }
 
     const center = this.terrain.worldToCell(x, y);
+    if (this.tool === TOOLS.DIG && initialClick) {
+      this.game?.eventBus?.emit("terrain:excavated", { x, y });
+    }
     const r = this.brushSize;
     const materialByTool = {
       [TOOLS.SAND]: MATERIALS.SAND,
@@ -263,6 +282,12 @@ export class GameEngine {
             this.terrain.setCell(cx, cy, MATERIALS.AIR.id, 0, 0);
             const wi = clamp(Math.floor(((cx + 0.5) * this.terrain.cellSize) / this.water.dx), 0, this.water.n - 1);
             if (old.key === 'SAND' || old.key === 'SOIL' || old.key === 'CLAY') this.water.sediment[wi] += 0.12;
+          }
+        } else if (this.tool === TOOLS.COMPACT) {
+          const mat = this.terrain.getMaterial(cx, cy);
+          if (mat.solid) {
+            this.terrain.integrity[idx] = Math.min(1, (this.terrain.integrity[idx] || 0) + 0.08);
+            this.terrain.moisture[idx] = Math.max(0, (this.terrain.moisture[idx] || 0) - 0.035);
           }
         } else {
           const mat = materialByTool[this.tool];

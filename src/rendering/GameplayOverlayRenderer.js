@@ -10,7 +10,8 @@ const OVERLAYS = [
   "FLOOD_RISK",
   "STRUCTURAL",
   "POWER",
-  "EVACUATION"
+  "EVACUATION",
+  "STRUCTURAL_PHYSICS"
 ];
 
 export { OVERLAYS };
@@ -106,6 +107,40 @@ export class GameplayOverlayRenderer {
           building.height + 6
         );
       }
+      return;
+    }
+
+    if (overlay === "STRUCTURAL_PHYSICS") {
+      const system = game.structuralEngineering;
+      if (!system) return;
+      ctx.save();
+      ctx.font = "9px system-ui";
+      for (const assembly of system.assemblies.values()) {
+        if (!assembly.bounds || !assembly.stability) continue;
+        const c = assembly.centerOfMass;
+        const state = assembly.stability.state;
+        ctx.fillStyle = state === "SAFE" ? "#68d89b" : state === "WARNING" ? "#e2c35d" : state === "CRITICAL" ? "#e8914d" : "#ef625a";
+        ctx.beginPath(); ctx.arc(c.x, c.y, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = ctx.fillStyle;
+        ctx.lineWidth = 2;
+        const f = assembly.stability.forces || {};
+        const waveLen = Math.min(90, Math.log10(1 + Math.max(0, f.horizontalForce || 0)) * 18);
+        ctx.beginPath(); ctx.moveTo(assembly.bounds.minX - waveLen, c.y); ctx.lineTo(assembly.bounds.minX, c.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(assembly.bounds.minX, c.y); ctx.lineTo(assembly.bounds.minX - 8, c.y - 4); ctx.moveTo(assembly.bounds.minX, c.y); ctx.lineTo(assembly.bounds.minX - 8, c.y + 4); ctx.stroke();
+        const baseY = assembly.bounds.maxY;
+        ctx.strokeStyle = "#77aee8";
+        ctx.beginPath(); ctx.moveTo(c.x, baseY + 22); ctx.lineTo(c.x, baseY); ctx.stroke();
+        ctx.fillStyle = "#dce9ed";
+        ctx.fillText("COM", c.x + 7, c.y - 7);
+        ctx.fillText(
+          "S " + assembly.stability.sliding.factor.toFixed(2) +
+          " · T " + assembly.stability.overturning.factor.toFixed(2) +
+          " · U " + assembly.stability.uplift.factor.toFixed(2),
+          assembly.bounds.minX,
+          assembly.bounds.minY - 10
+        );
+      }
+      ctx.restore();
       return;
     }
 

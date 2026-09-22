@@ -930,3 +930,209 @@ input[type="range"] { width: 100%; accent-color: #25a5c2; }
 .defense-risk.warning > div span { background: #d3ad4e; }
 .defense-risk.critical { border-color: rgba(206,76,68,.58); }
 .defense-risk.critical > div span { background: #d75d54; }
+
+
+/* Structural engineering gameplay v7 */
+.engineering-dock-wrap { gap: 5px; }
+.engineering-category-dock button { min-width: 62px; }
+
+.tool-category-menu {
+  display: flex;
+  gap: 4px;
+  max-width: min(780px, calc(100vw - 40px));
+  padding: 5px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: rgba(5, 15, 21, .93);
+  border: 1px solid rgba(61, 106, 126, .44);
+  border-radius: 10px;
+  box-shadow: 0 12px 34px rgba(0,0,0,.25);
+  backdrop-filter: blur(10px);
+  scrollbar-width: none;
+}
+.tool-category-menu::-webkit-scrollbar { display: none; }
+.tool-category-menu button {
+  min-width: 72px;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  padding: 5px 7px;
+}
+.tool-category-menu button b { color: #82d6e0; font-size: 13px; }
+.tool-category-menu button span { color: #9db4bd; font-size: 7px; white-space: nowrap; }
+
+.structural-preview {
+  width: min(460px, calc(100vw - 40px));
+  padding: 8px 10px;
+  background: rgba(5, 17, 23, .94);
+  border: 1px solid rgba(65, 136, 119, .5);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.22);
+}
+.structural-preview.invalid { border-color: rgba(190, 76, 69, .58); }
+.structural-preview-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.structural-preview-head strong { color: #e2f0f2; font-size: 9px; }
+.structural-preview-head span { color: #7e9aa4; font-size: 7px; }
+.structural-preview-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  gap: 3px 7px;
+  font-size: 7px;
+}
+.structural-preview-grid span { color: #708d98; }
+.structural-preview-grid b { color: #cee4e8; font-weight: 700; }
+
+.blueprint-panel {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: min(620px, calc(100vw - 40px));
+  padding: 5px 8px;
+  color: #75939f;
+  font-size: 7px;
+  background: rgba(6, 17, 23, .88);
+  border: 1px solid rgba(55, 93, 108, .38);
+  border-radius: 8px;
+}
+.blueprint-panel small { color: #66818c; letter-spacing: .08em; }
+.blueprint-panel b { color: #cde1e5; }
+
+.workforce-panel {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(66,101,118,.28);
+}
+.workforce-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 9px;
+  font-size: 8px;
+}
+.workforce-grid span { color: #76919c; }
+.workforce-grid b { color: #d9e9ed; }
+
+.material-stock {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(66,101,118,.24);
+}
+.material-stock > small {
+  color: #66848f;
+  font-size: 6px;
+  letter-spacing: .1em;
+}
+.material-stock-row {
+  display: grid !important;
+  grid-template-columns: 1fr auto 28px;
+  align-items: center;
+  gap: 6px;
+  color: #7e9aa5;
+  font-size: 7px;
+}
+.material-stock-row > span { display: flex; gap: 4px; align-items: baseline; }
+.material-stock-row small { color: #5f7d88; font-size: 6px; }
+.material-stock-row b { color: #d0e5e9; }
+.material-stock-row button { padding: 2px 4px; font-size: 7px; }
+
+.construction-queue-panel { margin-top: 12px; }
+.empty-queue { margin: 0; color: #6d8995; font-size: 8px; }
+.construction-job-card {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 7px;
+  padding: 7px;
+  background: rgba(10, 26, 34, .68);
+  border: 1px solid #1d3743;
+  border-radius: 8px;
+}
+.job-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.job-title strong { color: #d7e8ec; font-size: 8px; }
+.job-title span { color: #6e8994; font-size: 6px; }
+.job-progress {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #0c222c;
+}
+.job-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg,#3da7bf,#60c699);
+}
+.job-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #76929d;
+  font-size: 6px;
+}
+.worker-assignment {
+  display: grid;
+  grid-template-columns: 28px 1fr 28px;
+  gap: 4px;
+  align-items: center;
+}
+.worker-assignment button { padding: 3px; font-size: 9px; }
+.worker-assignment span { text-align: center; color: #99b1ba; font-size: 7px; }
+.job-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px;
+}
+.job-actions select, .job-actions button { padding: 4px; font-size: 7px; }
+
+.structural-inspector { display: grid; gap: 8px; }
+.stability-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.stability-factor {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid #24404b;
+  border-radius: 7px;
+  background: #0b1a22;
+}
+.stability-factor span { color: #78939d; font-size: 7px; }
+.stability-factor b { color: #d8e9ed; font-size: 8px; }
+.stability-factor.safe { border-color: rgba(69,158,111,.52); }
+.stability-factor.warning { border-color: rgba(202,157,65,.55); }
+.stability-factor.critical { border-color: rgba(223,130,67,.62); }
+.stability-factor.failing { border-color: rgba(211,73,66,.68); background: rgba(67,24,23,.28); }
+
+.foundation-inspector {
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(66,101,118,.26);
+}
+.foundation-inspector > small { color: #688691; font-size: 6px; letter-spacing: .09em; }
+.foundation-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  color: #7c98a3;
+  font-size: 7px;
+}
+.foundation-row b { color: #d2e5e9; }
+.foundation-row em { color: #65818c; font-style: normal; }
+.foundation-empty { margin: 0; color: #657f8b; font-size: 7px; }
+
+@media (max-width: 1199px) {
+  .structural-preview-grid { grid-template-columns: 1fr auto; }
+  .tool-category-menu { max-width: calc(100vw - 26px); }
+}
