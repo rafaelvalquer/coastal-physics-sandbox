@@ -14,7 +14,7 @@ export class FloodWaterRenderer {
       if (depth < 0.025) continue;
 
       const bedElevation = water.bed[i];
-      if (bedElevation < seaElevation - 1) continue;
+      if (bedElevation < water.baseSeaElevation - 3) continue;
 
       const x = i * water.dx;
       const surfaceY = water.surfaceYAtIndex(i);
