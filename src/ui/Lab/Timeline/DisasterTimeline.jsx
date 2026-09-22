@@ -1,0 +1,8 @@
+import { useState } from "react";import { TimelineTrack } from "./TimelineTrack.jsx";import { TimelineKeyframe } from "./TimelineKeyframe.jsx";
+export function DisasterTimeline({engine,snapshot}){
+ const [expanded,setExpanded]=useState(false);const frames=snapshot?.disaster?.keyframes||[],duration=snapshot?.experiment?.experiment?.disaster?.duration||180;
+ const update=(index,value)=>{const next=frames.map((f,i)=>i===index?value:f);engine?.game?.commandBus?.execute("lab:set-timeline",{keyframes:next});};
+ const remove=index=>engine?.game?.commandBus?.execute("lab:set-timeline",{keyframes:frames.filter((_,i)=>i!==index)});
+ const add=()=>{const last=frames.at(-1)||{};const time=duration*60*.5;engine?.game?.commandBus?.execute("lab:set-timeline",{keyframes:[...frames,{...last,time}].sort((a,b)=>a.time-b.time)});};
+ return <section className={"lab-timeline "+(expanded?"expanded":"")}><div className="lab-timeline-head"><div><small>DISASTER TIMELINE</small><strong>Desenhe a evolução do evento</strong></div><div><button onClick={add}>+ keyframe</button><button onClick={()=>setExpanded(v=>!v)}>{expanded?"Fechar":"Editar"}</button></div></div><div className="timeline-overview"><TimelineTrack frames={frames} duration={duration} field="waveHeight" max={8} label="Wave"/><TimelineTrack frames={frames} duration={duration} field="stormSurge" max={3} label="Surge"/><TimelineTrack frames={frames} duration={duration} field="rainfall" max={150} label="Rain"/></div>{expanded&&<div className="timeline-keyframe-list">{frames.map((f,i)=><TimelineKeyframe key={i} frame={f} duration={duration} onChange={v=>update(i,v)} onRemove={()=>remove(i)}/>)}</div>}</section>;
+}
