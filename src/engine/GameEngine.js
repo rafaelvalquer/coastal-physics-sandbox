@@ -403,7 +403,8 @@ export class GameEngine {
       pressure: this.water.pressure[wi],
       sediment: this.water.sediment[wi],
       breaking: this.water.breaking[wi],
-      building: this.game?.inspectAt?.(x, y) || null
+      building: this.game?.inspectAt?.(x, y) || null,
+      construction: this.game?.inspectConstructionAt?.(x, y) || null
     };
   }
 
