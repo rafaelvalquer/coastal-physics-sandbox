@@ -1,5 +1,6 @@
 export function bindLabCommands(app){
  const c=app.commandBus;
+ c.register("lab:experience-mode",({mode})=>app.setExperienceMode(mode));
  c.register("lab:set-tool",({category,tool})=>{app.editor.select(category,tool);return {ok:true};});
  c.register("lab:set-brush",({size})=>{app.editor.brush=Math.max(1,Math.min(7,Number(size)||2));return {ok:true};});
  c.register("lab:set-template",({id})=>app.loadTemplate(id));
