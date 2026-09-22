@@ -50,12 +50,15 @@ export function ConstructionToolbar({ engine, snapshot }) {
       return;
     }
 
-    if (tool.type === "COMPACT") {
-      engine?.setTool?.(TOOLS.COMPACT);
+    if (tool.type === "COMPACT" || tool.type === "DIG") {
+      engine?.setTool?.(TOOLS.INSPECT);
+      engine?.game?.commandBus?.execute("structural:action-select", {
+        type: tool.type === "DIG" ? "EXCAVATE" : "COMPACT"
+      });
       return;
     }
 
-    if (tool.type === "CHANNEL" || tool.type === "DIG") {
+    if (tool.type === "CHANNEL") {
       engine?.setTool?.(TOOLS.DIG);
     }
   };
