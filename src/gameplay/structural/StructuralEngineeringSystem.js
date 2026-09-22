@@ -29,8 +29,8 @@ export class StructuralEngineeringSystem {
     this.foundation=new StructuralFoundationSystem({terrain:engine.terrain,water:engine.water,grid:this.grid,eventBus});
     this.connectionSystem=new BlockConnectionSystem({graph:this.graph,grid:this.grid,blocks:this.blocks});
     this.builder=new AssemblyBuilder({grid:this.grid,graph:this.graph});
-    this.stability=new StabilitySolver({water:engine.water,foundation:this.foundation});
-    this.failure=new StructuralFailureSystem({eventBus,rigidBodies:engine.rigidBodies});
+    this.stability=new StabilitySolver({water:engine.water,foundation:this.foundation,fluidStructureCoupler:engine.fluidStructureCoupler});
+    this.failure=new StructuralFailureSystem({eventBus,rigidBodies:engine.rigidBodies,grid:this.grid,graph:this.graph,terrain:engine.terrain,water:engine.water});
     this.queue=new ConstructionQueue();
     this.scheduler=new ConstructionScheduler({queue:this.queue,workforce:this.workforce,inventory:this.inventory,eventBus,onProgress:(job)=>this.onProgress(job),onComplete:(job)=>this.onComplete(job)});
     this.validator=new StructuralPlacementValidator({grid:this.grid,terrain:engine.terrain,buildings,inventory:this.inventory,structuralSystem:this});
