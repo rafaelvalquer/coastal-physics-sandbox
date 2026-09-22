@@ -35,7 +35,8 @@ export function ConstructionToolbar({ engine, snapshot }) {
       engine?.setTool?.(TOOLS.INSPECT);
       engine?.game?.commandBus?.execute("structural:select", {
         type: tool.type,
-        category
+        category,
+        priority: tool.priority || "NORMAL"
       });
       return;
     }
