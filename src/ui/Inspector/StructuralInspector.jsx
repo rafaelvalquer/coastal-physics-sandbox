@@ -24,6 +24,7 @@ export function StructuralInspector({ assembly, engine }) {
         <span>Base</span><b>{assembly.baseWidth.toFixed(1)} m</b>
         <span>Condição</span><b>{Math.round((assembly.condition || 0) * 100)}%</b>
         <span>Estado</span><b>{assembly.failed ? "FALHA " + assembly.failureMode : s?.state || "CALCULANDO"}</b>
+        <span>Overtopping</span><b>{assembly.overtopping?.active ? (assembly.overtopping.severity || "ATIVO") : "não"}</b>
       </div>
       {s && (
         <div className="stability-grid">
