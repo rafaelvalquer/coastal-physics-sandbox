@@ -95,7 +95,9 @@ export class StructuralFailureSystem {
     if (this.water) {
       const flow = this.water.velocityAtX?.(assembly.centerOfMass.x) || 0;
       const surfaceY = this.water.surfaceYAtX?.(assembly.centerOfMass.x) ?? WORLD.height;
-      const submerged = Math.max(0, Math.min(1, (assembly.centerOfMass.y - surfaceY + assembly.heightMeters * 24) / Math.max(12, assembly.heightMeters * 48)));
+      const heightMeters = Number.isFinite(assembly.heightMeters) ? assembly.heightMeters : 1;
+      const centerY = assembly.centerOfMass?.y ?? 0;
+      const submerged = Math.max(0, Math.min(1, (centerY - surfaceY + heightMeters * 24) / Math.max(12, heightMeters * 48)));
       ax += (flow - assembly.velocityX) * submerged * 0.7;
       ay *= 1 - submerged * 0.72;
     }
@@ -146,15 +148,16 @@ export class StructuralFailureSystem {
 
     for (const [index, block] of candidates.entries()) {
       const center = this.grid ? block.worldCenter(this.grid) : assembly.centerOfMass;
+      const type = String(block.type || "");
       const material = block.debrisMaterial ||
-        (block.type.includes("WOOD") ? "wood" :
-          block.type.includes("ROOF") ? "tile" : "concrete");
-      const tangential = assembly.angularVelocity * ((index % 2 ? 1 : -1) * block.width * 24);
+        (type.includes("WOOD") ? "wood" :
+          type.includes("ROOF") ? "tile" : "concrete");
+      const tangential = assembly.angularVelocity * ((index % 2 ? 1 : -1) * Number(block.width || 0.5) * 24);
       const config = {
         x: center.x,
         y: center.y,
-        width: Math.max(8, block.width * 48),
-        height: Math.max(6, block.height * 48),
+        width: Math.max(8, Number(block.width || 0.5) * 48),
+        height: Math.max(6, Number(block.height || 0.5) * 48),
         density: block.density || (material === "wood" ? 620 : 2300),
         material,
         vx: assembly.velocityX + tangential + (index - candidates.length / 2) * 3,
