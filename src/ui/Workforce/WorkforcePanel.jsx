@@ -1,4 +1,5 @@
 import { ConstructionQueuePanel } from "./ConstructionQueuePanel.jsx";
+import { MATERIAL_UNITS, MATERIAL_PRICES } from "../../gameplay/resources/MaterialStockpile.js";
 export function WorkforcePanel({ engine, snapshot }) {
   const workforce = snapshot?.structuralEngineering?.workforce;
   const resources = snapshot?.structuralEngineering?.resources;
@@ -17,7 +18,14 @@ export function WorkforcePanel({ engine, snapshot }) {
       <div className="material-stock">
         <small>ESTOQUE</small>
         {Object.entries(resources?.materials?.available || {}).map(([key, value]) => (
-          <span key={key}>{key}<b>{Number(value).toFixed(1)}</b></span>
+          <span key={key} className="material-stock-row">
+            <span>{key}<small>{MATERIAL_UNITS[key] || ""}</small></span>
+            <b>{Number(value).toFixed(1)}</b>
+            <button
+              title={"Comprar 1 " + (MATERIAL_UNITS[key] || "") + " · $" + (MATERIAL_PRICES[key] || 0)}
+              onClick={() => engine?.game?.commandBus?.execute("resources:purchase", { material: key, quantity: 1 })}
+            >+$</button>
+          </span>
         ))}
       </div>
       <ConstructionQueuePanel engine={engine} snapshot={snapshot} />
