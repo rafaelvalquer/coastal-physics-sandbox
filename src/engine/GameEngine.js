@@ -52,6 +52,7 @@ export class GameEngine {
     this.pointer = { x: 0, y: 0, inside: false, down: false };
     this.keysDown = new Set();
     this.pointerMode = "tool";
+    this.lastStructuralDragCell = null;
     this.debug = { grid: false, velocity: false, pressure: false, sediment: false, moisture: false };
     this.game = new Game(this);
     this.destroyed = false;
@@ -100,6 +101,7 @@ export class GameEngine {
       pointerup: () => {
         this.pointer.down = false;
         this.pointerMode = "tool";
+        this.lastStructuralDragCell = null;
         this.cameraController.endDrag();
       },
       pointercancel: () => {
@@ -219,7 +221,20 @@ export class GameEngine {
   }
 
   applyTool(x, y, initialClick) {
-    if (this.game?.state.selectedConstruction || this.game?.structuralEngineering?.planner?.selectedType || this.game?.structuralEngineering?.selectedAction) {
+    if (this.game?.structuralEngineering?.planner?.selectedType) {
+      const cell = this.game.structuralEngineering.grid.worldToCell(x, y);
+      const key = cell.x + ":" + cell.y;
+      if (initialClick || (this.pointer.down && key !== this.lastStructuralDragCell)) {
+        this.lastStructuralDragCell = key;
+        this.game.handleWorldClick(x, y);
+      }
+      return;
+    }
+    if (this.game?.structuralEngineering?.selectedAction) {
+      if (initialClick) this.game.handleWorldClick(x, y);
+      return;
+    }
+    if (this.game?.state.selectedConstruction) {
       if (initialClick) this.game.handleWorldClick(x, y);
       return;
     }
