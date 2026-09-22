@@ -137,6 +137,38 @@ export class StructuralEngineeringSystem {
     }
   }
 
+  degradeConnections(a,dt){
+    if(!a.stability)return;
+    const ids=new Set(a.blocks.map(b=>b.id));
+    const stress=Math.max(0,1.2-a.stability.minimumFactor);
+    if(stress<=0)return;
+    let broken=false;
+    for(const [id,connection] of this.graph.connections){
+      if(!ids.has(connection.a)||!ids.has(connection.b))continue;
+      const resistance=Math.max(.15,connection.strength||.2);
+      connection.integrity=Math.max(0,connection.integrity-dt*stress*.08/resistance);
+      if(connection.integrity<=.05){
+        this.graph.connections.delete(id);broken=true;
+        this.eventBus?.emit("structural:connection-failed",{assemblyId:a.id,connectionId:id});
+      }
+    }
+    if(broken)this.rebuildNeeded=true;
+  }
+
+  updateFoundationLoads(a,dt){
+    if(!a.stability)return;
+    const critical=Math.max(0,1.1-Math.min(a.stability.sliding.factor,a.stability.overturning.factor,a.stability.uplift.factor));
+    if(critical<=0)return;
+    for(const e of this.foundation.forAssembly(a.id)){
+      if(!["ANCHOR","TIEBACK","PILE"].includes(e.kind))continue;
+      const before=e.integrity;
+      e.integrity=Math.max(0,e.integrity-dt*critical*(e.kind==="PILE"?.002:.0035));
+      if(before>0&&e.integrity<=0){
+        this.eventBus?.emit("structural:foundation-failed",{assemblyId:a.id,foundationId:e.id,mode:e.kind==="PILE"?"PILE_FAILURE":"ANCHOR_FAILURE"});
+      }
+    }
+  }
+
   fractureAssembly(a){
     const candidates=a.blocks.filter(b=>b.gridY<Math.max(...a.blocks.map(x=>x.gridY)));
     const detached=candidates.filter((b,index)=>index%2===0).slice(0,Math.max(1,Math.ceil(candidates.length*.35)));
@@ -160,6 +192,12 @@ export class StructuralEngineeringSystem {
     for(const a of this.assemblies.values()){
       a.recalculate(this.grid,this.foundation.extraMassesForAssembly(a));
       this.stability.solve(a);
+      this.degradeConnections(a,elapsed);
+      this.updateFoundationLoads(a,elapsed);
+      if(a.stability.minimumFactor<1){
+        const damage=(1-a.stability.minimumFactor)*elapsed*.0015;
+        for(const block of a.blocks)block.integrity=Math.max(0,block.integrity-damage);
+      }
       const wasFailed=a.failed;
       this.failure.update(a,elapsed);
       if(!wasFailed&&a.failed)this.fractureAssembly(a);
