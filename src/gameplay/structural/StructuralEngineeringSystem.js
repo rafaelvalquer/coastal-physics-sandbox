@@ -262,7 +262,7 @@ export class StructuralEngineeringSystem {
     return null;
   }
 
-  assemblySnapshot(a){return {id:a.id,type:"STRUCTURAL_ASSEMBLY",blockCount:a.blocks.length,totalMass:a.totalMass,centerOfMass:{...a.centerOfMass},bounds:a.bounds?{...a.bounds}:null,baseWidth:a.baseWidthMeters,height:a.heightMeters,condition:a.condition,integrity:a.integrity,rotation:a.rotation,displacementX:a.displacementX,failed:a.failed,failureMode:a.failureMode,stability:a.stability,foundations:this.foundation.forAssembly(a.id).map(e=>e.serialize())};}
+  assemblySnapshot(a){return {id:a.id,type:"STRUCTURAL_ASSEMBLY",blockCount:a.blocks.length,totalMass:a.totalMass,centerOfMass:{...a.centerOfMass},bounds:a.bounds?{...a.bounds}:null,baseWidth:a.baseWidthMeters,height:a.heightMeters,condition:a.condition,integrity:a.integrity,rotation:a.rotation,displacementX:a.displacementX,failed:a.failed,failureMode:a.failureMode,stability:a.stability,overtopping:a.overtopping||null,foundations:this.foundation.forAssembly(a.id).map(e=>e.serialize())};}
 
   snapshot(){
     const jobs=this.queue.serialize().map(j=>({...j,remainingHours:this.queue.get(j.id)?.remainingHours?.()??0}));
