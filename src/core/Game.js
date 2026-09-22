@@ -28,6 +28,7 @@ import { ConstructionManager } from "../gameplay/construction/ConstructionManage
 import { ConstructionPreview } from "../gameplay/construction/ConstructionPreview.js";
 import { ConstructionTool } from "../gameplay/construction/ConstructionTool.js";
 import { PhysicsConstructionAdapter } from "../gameplay/construction/PhysicsConstructionAdapter.js";
+import { StructuralEngineeringSystem } from "../gameplay/structural/StructuralEngineeringSystem.js";
 
 import { ObjectiveManager } from "../gameplay/objectives/ObjectiveManager.js";
 import { FailureManager } from "../gameplay/objectives/FailureManager.js";
@@ -50,6 +51,8 @@ import { DamageOverlayRenderer } from "../rendering/DamageOverlayRenderer.js";
 import { WeatherRenderer } from "../rendering/WeatherRenderer.js";
 import { GameplayOverlayRenderer, OVERLAYS } from "../rendering/GameplayOverlayRenderer.js";
 import { ConstructionPreviewRenderer } from "../rendering/ConstructionPreviewRenderer.js";
+import { StructuralRenderer } from "../rendering/StructuralRenderer.js";
+import { StructuralPreviewRenderer } from "../rendering/StructuralPreviewRenderer.js";
 
 export class Game {
   constructor(engine, scenarioId = "porto-esperanca", difficulty = "NORMAL") {
@@ -103,6 +106,14 @@ export class Game {
     this.constructionTool = new ConstructionTool({
       constructionManager: this.constructions,
       preview: this.preview
+    });
+
+    this.structuralEngineering = new StructuralEngineeringSystem({
+      engine,
+      eventBus: this.eventBus,
+      population: this.population,
+      budget: this.economy.budget,
+      buildings: this.buildings
     });
 
     this.foundation = new FoundationSystem({
@@ -202,6 +213,8 @@ export class Game {
     this.weatherRenderer = new WeatherRenderer();
     this.overlayRenderer = new GameplayOverlayRenderer();
     this.constructionPreviewRenderer = new ConstructionPreviewRenderer();
+    this.structuralRenderer = new StructuralRenderer();
+    this.structuralPreviewRenderer = new StructuralPreviewRenderer();
 
     this.lastSnapshot = null;
     this.seedInfrastructure();
@@ -317,6 +330,28 @@ export class Game {
     this.eventBus.on("drainage:overflow", () => {
       this.state.pushMessage("Drenagem operando acima da capacidade.", "warning");
     });
+    this.eventBus.on("structural:failed", ({ assemblyId, mode }) => {
+      const assembly = this.structuralEngineering.assemblies.get(assemblyId);
+      this.state.pushMessage("Falha estrutural: " + mode + " em " + assemblyId, "danger", {
+        entityId: assemblyId,
+        x: assembly?.centerOfMass?.x,
+        y: assembly?.centerOfMass?.y
+      });
+    });
+    this.eventBus.on("job:completed", ({ job }) => {
+      const label = job.type === "REPAIR" ? "Reparo concluído" : "Obra concluída";
+      this.state.pushMessage(label + ": " + (job.blueprint?.type || job.targetId || job.id), "success");
+      if (this.tutorial.current === "WAIT_CONSTRUCTION") this.tutorial.complete();
+      if (job.type === "REPAIR" && this.tutorial.current === "REPAIR") this.tutorial.complete();
+    });
+    this.eventBus.on("foundation:placed", ({ foundation }) => {
+      if (this.tutorial.current === "BUILD_FOOTING" && foundation.type === "FOUNDATION_BLOCK") this.tutorial.complete();
+      if (this.tutorial.current === "PLACE_TWO_PILES") {
+        const count = [...this.structuralEngineering.foundation.elements.values()].filter((item) => item.kind === "PILE").length;
+        if (count >= 2) this.tutorial.complete();
+      }
+      if (this.tutorial.current === "INSTALL_ANCHOR" && foundation.kind === "ANCHOR") this.tutorial.complete();
+    });
     this.eventBus.on("construction:failed", ({ constructionId }) => {
       const construction = this.constructions.list().find((item) => item.id === constructionId);
       this.state.pushMessage("Falha estrutural em " + constructionId, "danger", {
@@ -338,6 +373,31 @@ export class Game {
     this.commandBus.register("ui:forecast-opened", () => {
       if (this.tutorial.current === "OPEN_FORECAST") this.tutorial.complete();
       return { ok: true };
+    });
+    this.commandBus.register("structural:select", ({ type, category = null }) => {
+      this.clearConstruction();
+      this.structuralEngineering.planner.select(type, category);
+      this.state.selectedConstruction = null;
+      return { ok: true, type };
+    });
+    this.commandBus.register("structural:cancel", () => {
+      this.structuralEngineering.planner.clear();
+      return { ok: true };
+    });
+    this.commandBus.register("structural:set-workers", ({ jobId, workers }) => ({
+      ok: this.structuralEngineering.scheduler.setWorkers(jobId, workers)
+    }));
+    this.commandBus.register("structural:set-priority", ({ jobId, priority }) => ({
+      ok: this.structuralEngineering.scheduler.setPriority(jobId, priority)
+    }));
+    this.commandBus.register("structural:cancel-job", ({ jobId }) => ({
+      ok: this.structuralEngineering.scheduler.cancel(jobId)
+    }));
+    this.commandBus.register("structural:repair", ({ assemblyId, priority = "HIGH", workers = 4 }) => {
+      return this.structuralEngineering.scheduleRepair(assemblyId, { priority, workers });
+    });
+    this.commandBus.register("structural:reinforce", ({ assemblyId, type, x, y, priority = "HIGH", workers = null }) => {
+      return this.structuralEngineering.scheduleReinforcement(assemblyId, type, { x, y }, { priority, workers });
     });
     this.commandBus.register("construction:select", ({ type, length = 20 }) => {
       this.selectConstruction(type, length);
@@ -441,6 +501,10 @@ export class Game {
     this.state.selectedConstruction = null;
   }
 
+  clearStructuralTool() {
+    this.structuralEngineering.planner.clear();
+  }
+
   setOverlayByIndex(index) {
     const overlay = OVERLAYS[index] || null;
     this.state.overlay = this.state.overlay === overlay ? null : overlay;
@@ -468,6 +532,8 @@ export class Game {
   }
 
   inspectConstructionAt(x, y) {
+    const structural = this.structuralEngineering.inspectAt(x, y);
+    if (structural) return structural;
     const construction = this.constructions.list().find((candidate) => {
       const halfWidth = Math.max(12, Math.min(180, candidate.length * 6));
       return (
@@ -493,6 +559,19 @@ export class Game {
   }
 
   handleWorldClick(x, y) {
+    if (this.structuralEngineering.planner.selectedType) {
+      const result = this.structuralEngineering.planner.plan({ x, y });
+      if (!result.ok) this.state.pushMessage(result.reason || "Projeto estrutural inválido", "warning");
+      else {
+        this.state.pushMessage(
+          "Projeto iniciado: " + result.blueprint.type + " · aguardando trabalhadores",
+          "info",
+          { x: result.blueprint.position.x, y: result.blueprint.position.y }
+        );
+        if (this.tutorial.current === "ASSIGN_WORKERS") this.tutorial.complete();
+      }
+      return result;
+    }
     if (!this.state.selectedConstruction) {
       const inspection = this.engine.inspectWorld?.(x, y) || null;
       this.state.selectInspection(inspection);
@@ -524,6 +603,7 @@ export class Game {
       this.damage.update(dt);
       this.physicsAdapter.update(dt, this.constructions.list());
       this.constructions.update(dt);
+      this.structuralEngineering.update(dt, this.clock);
 
       this.roads.updateFlooding(this.engine.water);
       this.evacuation.update(dt);
@@ -638,6 +718,7 @@ export class Game {
       resilience: score,
       buildings,
       constructions: this.constructions.list().map((construction) => construction.serialize()),
+      structuralEngineering: this.structuralEngineering.snapshot(),
       forecast: this.weather.getForecast(3),
       weather: { ...this.weather.state },
       stormPhase: this.seaState.state.phase,
@@ -653,11 +734,15 @@ export class Game {
         completed: this.tutorial.completed
       },
       selectedConstruction: this.state.selectedConstruction,
+      selectedStructuralTool: this.structuralEngineering.planner.selectedType,
       selectedInspection: this.state.selectedInspection
         ? this.engine.inspectWorld?.(this.state.selectedInspection.x, this.state.selectedInspection.y) || this.state.selectedInspection
         : null,
       constructionPreview: this.state.selectedConstruction && this.engine.pointer?.inside
         ? this.constructionTool.inspect({ x: this.engine.pointer.x, y: this.engine.pointer.y })
+        : null,
+      structuralPreview: this.structuralEngineering.planner.selectedType && this.engine.pointer?.inside
+        ? this.structuralEngineering.planner.preview({ x: this.engine.pointer.x, y: this.engine.pointer.y })
         : null,
       overlay: this.state.overlay,
       messages: this.state.messages,
@@ -679,20 +764,23 @@ export class Game {
   render(ctx) {
     this.weatherRenderer.draw(ctx, this.weather.state);
     this.constructionRenderer.draw(ctx, this.constructions.list());
+    this.structuralRenderer.draw(ctx, this.structuralEngineering);
     this.buildingRenderer.draw(ctx, this.buildings.list());
     this.damageOverlayRenderer.draw(ctx, this.buildings.list());
     this.overlayRenderer.draw(ctx, this.state.overlay, this);
     this.constructionPreviewRenderer.draw(ctx, this);
+    this.structuralPreviewRenderer.draw(ctx, this);
   }
 
   serialize() {
     return {
-      saveVersion: 1,
+      saveVersion: 2,
       scenarioId: this.scenario.id,
       gameClock: this.clock.serialize(),
       gameState: this.state.serialize(),
       buildings: this.buildings.serialize(),
       constructions: this.constructions.serialize(),
+      structuralEngineering: this.structuralEngineering.serialize(),
       economy: this.economy.serialize(),
       weather: this.weather.serialize(),
       population: this.population.serialize(),
@@ -730,6 +818,9 @@ export class Game {
     this.achievements.hydrate(value.achievements || {});
     if (value.difficulty?.level) this.difficulty.set(value.difficulty.level);
     this.constructions.hydrate(value.constructions || []);
+    if ((value.saveVersion || 1) >= 2) {
+      this.structuralEngineering.hydrate(value.structuralEngineering || {});
+    }
     this.seaState.hydrate(value.seaState || {});
     this.offshoreWaves.hydrate(value.offshoreWaves || {});
     this.runup.hydrate(value.runup || {});
