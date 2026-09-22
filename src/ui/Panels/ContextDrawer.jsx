@@ -43,7 +43,7 @@ export function ContextDrawer({ engine, stats }) {
         )}
         {panel === "WEATHER" && (
           <>
-            <WeatherPanel snapshot={snapshot} />
+            <WeatherPanel snapshot={snapshot} engine={engine} />
             <SeaStatePanel snapshot={snapshot} />
           </>
         )}
