@@ -11,7 +11,7 @@ export function WeatherPanel({ snapshot, engine }) {
 
   useEffect(() => {
     engine?.game?.commandBus?.execute("ui:forecast-opened");
-  }, [engine]);
+  }, [engine, snapshot?.tutorial?.current]);
 
   return (
     <div className="game-card weather-card">
