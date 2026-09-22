@@ -11,6 +11,8 @@ export function WorkforcePanel({ engine, snapshot }) {
         <span>População apta</span><b>{workforce.workingPopulation}</b>
         <span>Equipe municipal</span><b>{workforce.total}</b>
         <span>Construção</span><b>{workforce.construction}</b>
+        <span>Manutenção</span><b>{workforce.maintenance || 0}</b>
+        <span>Emergência em campo</span><b>{workforce.emergency || 0}</b>
         <span>Serviços essenciais</span><b>{workforce.essential}</b>
         <span>Reserva emergência</span><b>{workforce.emergencyReserve}</b>
         <span>Disponíveis</span><b>{workforce.available}</b>
