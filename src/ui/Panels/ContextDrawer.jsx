@@ -3,6 +3,8 @@ import { EconomyPanel } from "../EconomyPanel/EconomyPanel.jsx";
 import { ObjectivePanel } from "../ObjectivePanel/ObjectivePanel.jsx";
 import { InspectorPanel } from "../Inspector/InspectorPanel.jsx";
 import { CampaignPanel } from "../CampaignPanel/CampaignPanel.jsx";
+import { SeaStatePanel } from "./SeaStatePanel.jsx";
+import { FloodPanel } from "./FloodPanel.jsx";
 import { useUI } from "../state/UIStore.jsx";
 
 const TITLES = {
@@ -33,8 +35,18 @@ export function ContextDrawer({ engine, stats }) {
       </header>
 
       <div className="context-drawer-content">
-        {panel === "CITY" && <EconomyPanel snapshot={snapshot} />}
-        {panel === "WEATHER" && <WeatherPanel snapshot={snapshot} />}
+        {panel === "CITY" && (
+          <>
+            <EconomyPanel snapshot={snapshot} />
+            <FloodPanel snapshot={snapshot} />
+          </>
+        )}
+        {panel === "WEATHER" && (
+          <>
+            <WeatherPanel snapshot={snapshot} />
+            <SeaStatePanel snapshot={snapshot} />
+          </>
+        )}
         {panel === "OBJECTIVES" && <ObjectivePanel snapshot={snapshot} />}
         {panel === "RESEARCH" && <CampaignPanel engine={engine} snapshot={snapshot} />}
         {panel === "INSPECTOR" && (
