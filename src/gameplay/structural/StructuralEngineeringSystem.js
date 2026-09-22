@@ -155,7 +155,7 @@ export class StructuralEngineeringSystem {
     for(const a of this.assemblies.values()){
       for(const b of a.blocks)b.assemblyId=a.id;
       for(const e of this.foundation.elements.values()){
-        if(!e.assemblyId&&a.bounds&&e.x>=a.bounds.minX-36&&e.x<=a.bounds.maxX+36&&Math.abs(e.y-a.bounds.maxY)<80)e.assemblyId=a.id;
+        if((!e.assemblyId||!this.assemblies.has(e.assemblyId))&&a.bounds&&e.x>=a.bounds.minX-36&&e.x<=a.bounds.maxX+36&&Math.abs(e.y-a.bounds.maxY)<80)e.assemblyId=a.id;
       }
       a.recalculate(this.grid,this.foundation.extraMassesForAssembly(a));
     }
